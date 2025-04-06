@@ -1,0 +1,24 @@
+$schema: https://git.drupalcode.org/project/drupal/-/raw/10.1.x/core/modules/sdc/src/metadata.schema.json
+name: Title
+status: stable
+group: Layout builder
+props:
+  type: object
+  properties:
+    component:
+      type: string
+    attributes:
+      type: Drupal\Core\Template\Attribute
+    classes:
+      type: array
+    title:
+      type: string
+    subtitle:
+      type: string
+    content:
+      type: object
+    title_suffix:
+      type: array
+slots:
+  cb_content:
+    title: Content block - Body

@@ -1,0 +1,4103 @@
+diff --git a/core/misc/cspell/dictionary.txt b/core/misc/cspell/dictionary.txt
+index 9687daecb44d264a74c9dad3b3c70f84e2378cf7..afab74c8ae68619ea4b5c7f820b9687d61a12299 100644
+--- a/core/misc/cspell/dictionary.txt
++++ b/core/misc/cspell/dictionary.txt
+@@ -114,6 +114,7 @@ checkboxifier
+ checkboxify
+ checkboxradio
+ chocolatiers
++chotchkies
+ chromedriver
+ chtext
+ chumillas
+@@ -312,6 +313,7 @@ imagecache
+ imagetextalternative
+ indexname
+ inited
++initech
+ inno
+ instantiator
+ interactable
+@@ -365,6 +367,7 @@ loquesea
+ lrdd
+ lstitle
+ ltitle
++lumbergh
+ lzma
+ mainpage
+ mank
+@@ -788,6 +791,7 @@ versionless
+ vfsstream
+ viewports
+ vocabs
++waddams
+ wcag
+ wcprops
+ webassert
+diff --git a/core/modules/layout_builder/config/schema/layout_builder.schema.yml b/core/modules/layout_builder/config/schema/layout_builder.schema.yml
+index 0bab48dfbb5e6492fc2233d43a8e8e1e4c8626c5..c2276ded4eff10d4afc1a15271f3f3e04d596203 100644
+--- a/core/modules/layout_builder/config/schema/layout_builder.schema.yml
++++ b/core/modules/layout_builder/config/schema/layout_builder.schema.yml
+@@ -56,6 +56,11 @@ layout_builder.component:
+     additional:
+       type: ignore
+       label: 'Additional data'
++    third_party_settings:
++      type: sequence
++      label: 'Third party settings'
++      sequence:
++        type: '[%parent.%parent.%type].third_party.[%key]'
+ 
+ inline_block:
+   type: block_settings
+diff --git a/core/modules/layout_builder/layout_builder.links.contextual.yml b/core/modules/layout_builder/layout_builder.links.contextual.yml
+index 4bbfcc9e64deeff5814dd42c68b5c4cc316eabc1..b43b81ea69d1c52262c16c2444b362fb1f60b995 100644
+--- a/core/modules/layout_builder/layout_builder.links.contextual.yml
++++ b/core/modules/layout_builder/layout_builder.links.contextual.yml
+@@ -27,3 +27,23 @@ layout_builder_block_remove:
+       class: ['use-ajax']
+       data-dialog-type: dialog
+       data-dialog-renderer: off_canvas
++
++layout_builder_block_translate:
++  title: 'Translate block'
++  route_name: 'layout_builder.translate_block'
++  group: 'layout_builder_block_translation'
++  options:
++    attributes:
++      class: ['use-ajax']
++      data-dialog-type: dialog
++      data-dialog-renderer: off_canvas
++
++layout_builder_inline_block_translate:
++  title: 'Translate block'
++  route_name: 'layout_builder.translate_inline_block'
++  group: 'layout_builder_inline_block_translation'
++  options:
++    attributes:
++      class: ['use-ajax']
++      data-dialog-type: dialog
++      data-dialog-renderer: off_canvas
+diff --git a/core/modules/layout_builder/layout_builder.module b/core/modules/layout_builder/layout_builder.module
+index 9ac8f65d1da786d61905150242736f7e17dd34f6..0bb8e11c44e2aac3dbeca120cf9fb7a5cb26fd40 100644
+--- a/core/modules/layout_builder/layout_builder.module
++++ b/core/modules/layout_builder/layout_builder.module
+@@ -19,6 +19,7 @@
+ use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
+ use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplayStorage;
+ use Drupal\layout_builder\Entity\LayoutEntityDisplayInterface;
++use Drupal\layout_builder\Form\BlockContentInlineBlockTranslateForm;
+ use Drupal\layout_builder\Form\DefaultsEntityForm;
+ use Drupal\layout_builder\Form\LayoutBuilderEntityViewDisplayForm;
+ use Drupal\layout_builder\Form\OverridesEntityForm;
+@@ -84,6 +85,10 @@ function layout_builder_entity_type_alter(array &$entity_types) {
+       $entity_type->setFormClass('layout_builder', OverridesEntityForm::class);
+     }
+   }
++
++  if (isset($entity_types['block_content'])) {
++    $entity_types['block_content']->setFormClass('layout_builder_translate', BlockContentInlineBlockTranslateForm::class);
++  }
+ }
+ 
+ /**
+diff --git a/core/modules/layout_builder/layout_builder.post_update.php b/core/modules/layout_builder/layout_builder.post_update.php
+index ee735bf41b85b038aba945d3dbf8dd336ab0bbef..ba9288305ab608d1e7a2283cb94d79c893a3c434 100644
+--- a/core/modules/layout_builder/layout_builder.post_update.php
++++ b/core/modules/layout_builder/layout_builder.post_update.php
+@@ -8,7 +8,11 @@
+ use Drupal\Core\Config\Entity\ConfigEntityUpdater;
+ use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+ use Drupal\Core\Field\Plugin\Field\FieldFormatter\TimestampFormatter;
++use Drupal\field\Entity\FieldConfig;
++use Drupal\field\Entity\FieldStorageConfig;
+ use Drupal\layout_builder\Entity\LayoutEntityDisplayInterface;
++use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
++use Drupal\layout_builder\SectionComponent;
+ 
+ /**
+  * Implements hook_removed_post_updates().
+@@ -36,6 +40,63 @@ function layout_builder_removed_post_updates() {
+   ];
+ }
+ 
++/**
++ * Adds the layout translation settings field.
++ */
++function layout_builder_post_update_add_translation_field() {
++  /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $field_manager */
++  $field_manager = \Drupal::service('entity_field.manager');
++  $field_map = $field_manager->getFieldMap();
++  foreach ($field_map as $entity_type_id => $field_infos) {
++    if (isset($field_infos[OverridesSectionStorage::FIELD_NAME]['bundles'])) {
++      foreach ($field_infos[OverridesSectionStorage::FIELD_NAME]['bundles'] as $bundle) {
++        // The field map can contain stale information. If the field does not
++        // exist, ignore it. The field map will be rebuilt when the cache is
++        // cleared at the end of the update process.
++        if (!FieldConfig::loadByName($entity_type_id, $bundle, OverridesSectionStorage::FIELD_NAME)) {
++          continue;
++        }
++        _layout_builder_add_translation_field($entity_type_id, $bundle);
++
++      }
++    }
++
++  }
++}
++
++/**
++ * Adds a layout translation field to a given bundle.
++ *
++ * @param string $entity_type_id
++ *   The entity type ID.
++ * @param string $bundle
++ *   The bundle.
++ */
++function _layout_builder_add_translation_field($entity_type_id, $bundle) {
++  $field_name = OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME;
++  $field = FieldConfig::loadByName($entity_type_id, $bundle, $field_name);
++  if (!$field) {
++    $field_storage = FieldStorageConfig::loadByName($entity_type_id, $field_name);
++    if (!$field_storage) {
++      $field_storage = FieldStorageConfig::create([
++        'entity_type' => $entity_type_id,
++        'field_name' => $field_name,
++        'type' => 'layout_translation',
++        'locked' => TRUE,
++      ]);
++      $field_storage->setTranslatable(TRUE);
++      $field_storage->save();
++    }
++
++    $field = FieldConfig::create([
++      'field_storage' => $field_storage,
++      'bundle' => $bundle,
++      'label' => t('Layout Labels'),
++    ]);
++    $field->save();
++  }
++}
++
+ /**
+  * Update timestamp formatter settings for Layout Builder fields.
+  */
+@@ -76,3 +137,45 @@ function layout_builder_post_update_timestamp_formatter(?array &$sandbox = NULL)
+ function layout_builder_post_update_enable_expose_field_block_feature_flag(): void {
+   \Drupal::service('module_installer')->install(['layout_builder_expose_all_field_blocks']);
+ }
++
++/**
++ * Add third_party_settings key to all section components.
++ */
++function layout_builder_post_update_section_component_third_party(?array &$sandbox = NULL): void {
++  $config_entity_updater = \Drupal::classResolver(ConfigEntityUpdater::class);
++
++  $callback = function (EntityViewDisplayInterface $display) {
++    $needs_update = FALSE;
++
++    // Only update entity view displays where Layout Builder is enabled.
++    if ($display instanceof LayoutEntityDisplayInterface && $display->isLayoutBuilderEnabled()) {
++      foreach ($display->getSections() as $section) {
++        // Add a third_party_settings element to each section component.
++        $components = $section->getComponents();
++        foreach ($components as $delta => $component) {
++          $components[$delta] = new SectionComponent(
++            $component->getUuid(),
++            $component->getRegion(),
++            $component->getConfiguration(),
++            $component->toArray()['additional']
++          );
++          // Depending on the state of the configuration of a site and when this
++          // update is run, there might already be third party settings on a
++          // section component. Retain them, if they exist.
++          $tps_providers = $component->getThirdPartyProviders();
++          foreach ($tps_providers as $provider) {
++            foreach ($component->getThirdPartySettings($provider) as $key => $value) {
++              $component->setThirdPartySetting($provider, $key, $value);
++            }
++          }
++          // Flag this display as needing to be updated.
++          $needs_update = TRUE;
++        }
++      }
++    }
++
++    return $needs_update;
++  };
++
++  $config_entity_updater->update($sandbox, 'entity_view_display', $callback);
++}
+diff --git a/core/modules/layout_builder/layout_builder.routing.yml b/core/modules/layout_builder/layout_builder.routing.yml
+index fa72dcec931f8cec5fb139e35addba1618e4d9ff..5db3e9692beb0f0f1c427357587a198260e6e97d 100644
+--- a/core/modules/layout_builder/layout_builder.routing.yml
++++ b/core/modules/layout_builder/layout_builder.routing.yml
+@@ -5,6 +5,7 @@ layout_builder.choose_section:
+     _title: 'Choose a layout for this section'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -17,6 +18,7 @@ layout_builder.add_section:
+     _controller: '\Drupal\layout_builder\Controller\AddSectionController::build'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -33,6 +35,7 @@ layout_builder.configure_section:
+     plugin_id: null
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -45,6 +48,7 @@ layout_builder.remove_section:
+     _form: '\Drupal\layout_builder\Form\RemoveSectionForm'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -58,6 +62,7 @@ layout_builder.choose_block:
+     _title: 'Choose a block'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -71,6 +76,7 @@ layout_builder.add_block:
+     _title: 'Configure block'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -84,6 +90,7 @@ layout_builder.choose_inline_block:
+     _title: 'Add a new content block'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -97,6 +104,35 @@ layout_builder.update_block:
+     _title: 'Configure block'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
++  options:
++    _admin_route: TRUE
++    parameters:
++      section_storage:
++        layout_builder_tempstore: TRUE
++
++layout_builder.translate_block:
++  path: '/layout_builder/translate/block/{section_storage_type}/{section_storage}/{delta}/{region}/{uuid}/{langcode}'
++  defaults:
++    _form: '\Drupal\layout_builder\Form\TranslateBlockForm'
++    _title: 'Translate block'
++  requirements:
++    _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'translated'
++  options:
++    _admin_route: TRUE
++    parameters:
++      section_storage:
++        layout_builder_tempstore: TRUE
++
++layout_builder.translate_inline_block:
++  path: '/layout_builder/translate/inline-block/{section_storage_type}/{section_storage}/{delta}/{region}/{uuid}'
++  defaults:
++    _entity_form: 'block_content.layout_builder_translate'
++    _title: 'Translate block'
++  requirements:
++    _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'translated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -110,6 +146,7 @@ layout_builder.move_block_form:
+     _form: '\Drupal\layout_builder\Form\MoveBlockForm'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+@@ -122,6 +159,7 @@ layout_builder.remove_block:
+     _form: '\Drupal\layout_builder\Form\RemoveBlockForm'
+   requirements:
+     _layout_builder_access: 'view'
++    _layout_builder_translation_access: 'untranslated'
+   options:
+     _admin_route: TRUE
+     parameters:
+diff --git a/core/modules/layout_builder/layout_builder.services.yml b/core/modules/layout_builder/layout_builder.services.yml
+index 65c93652209b5e6f814d8756fb35264428a8539f..2cd576689adebebfe97871d8f7286b0d82e11d4e 100644
+--- a/core/modules/layout_builder/layout_builder.services.yml
++++ b/core/modules/layout_builder/layout_builder.services.yml
+@@ -9,6 +9,10 @@ services:
+     class: Drupal\layout_builder\Access\LayoutBuilderAccessCheck
+     tags:
+       - { name: access_check, applies_to: _layout_builder_access }
++  access_check.entity.layout_builder_translation_access:
++    class: Drupal\layout_builder\Access\LayoutBuilderTranslationAccessCheck
++    tags:
++      - { name: access_check, applies_to: _layout_builder_translation_access }
+   plugin.manager.layout_builder.section_storage:
+     class: Drupal\layout_builder\SectionStorage\SectionStorageManager
+     parent: default_plugin_manager
+@@ -50,6 +54,9 @@ services:
+   layout_builder.render_block_component_subscriber:
+     class: Drupal\layout_builder\EventSubscriber\BlockComponentRenderArray
+     arguments: ['@current_user']
++  layout_builder.translate_block_component_subscriber:
++    class: Drupal\layout_builder\EventSubscriber\ComponentPluginTranslate
++    arguments: ['@language_manager', '@current_route_match']
+   logger.channel.layout_builder:
+     parent: logger.channel_base
+     arguments: ['layout_builder']
+diff --git a/core/modules/layout_builder/layout_builder.services.yml.orig b/core/modules/layout_builder/layout_builder.services.yml.orig
+new file mode 100644
+index 0000000000000000000000000000000000000000..296100aeb9c46a455dde35b4354f3e572f7c5437
+--- /dev/null
++++ b/core/modules/layout_builder/layout_builder.services.yml.orig
+@@ -0,0 +1,74 @@
++services:
++  layout_builder.tempstore_repository:
++    class: Drupal\layout_builder\LayoutTempstoreRepository
++    arguments: ['@tempstore.shared']
++  Drupal\layout_builder\LayoutTempstoreRepositoryInterface: '@layout_builder.tempstore_repository'
++  access_check.entity.layout_builder_access:
++    class: Drupal\layout_builder\Access\LayoutBuilderAccessCheck
++    tags:
++      - { name: access_check, applies_to: _layout_builder_access }
++  plugin.manager.layout_builder.section_storage:
++    class: Drupal\layout_builder\SectionStorage\SectionStorageManager
++    parent: default_plugin_manager
++    arguments: ['@context.handler']
++  Drupal\layout_builder\SectionStorage\SectionStorageManagerInterface: '@plugin.manager.layout_builder.section_storage'
++  layout_builder.routes:
++    class: Drupal\layout_builder\Routing\LayoutBuilderRoutes
++    arguments: ['@plugin.manager.layout_builder.section_storage']
++    tags:
++      - { name: event_subscriber }
++  layout_builder.tempstore.route_enhancer:
++    class: Drupal\layout_builder\Routing\LayoutTempstoreRouteEnhancer
++    arguments: ['@layout_builder.tempstore_repository']
++    tags:
++      - { name: route_enhancer }
++  layout_builder.param_converter:
++    class: Drupal\layout_builder\Routing\LayoutSectionStorageParamConverter
++    arguments: ['@plugin.manager.layout_builder.section_storage']
++    tags:
++      - { name: paramconverter, priority: 10 }
++  cache_context.layout_builder_is_active:
++    class: Drupal\layout_builder\Cache\LayoutBuilderIsActiveCacheContext
++    arguments: ['@current_route_match']
++    tags:
++      - { name: cache.context}
++  cache_context.route.name.is_layout_builder_ui:
++    class: Drupal\layout_builder\Cache\LayoutBuilderUiCacheContext
++    arguments: ['@current_route_match']
++    tags:
++      - { name: cache.context }
++  layout_builder.extra_fields.invalidator:
++    class: Drupal\layout_builder\Cache\ExtraFieldBlockCacheTagInvalidator
++    arguments: ['@plugin.manager.block']
++    public: false
++    tags:
++      - { name: cache_tags_invalidator }
++  layout_builder.sample_entity_generator:
++    class: Drupal\layout_builder\Entity\LayoutBuilderSampleEntityGenerator
++    arguments: ['@tempstore.shared', '@entity_type.manager']
++  Drupal\layout_builder\Entity\SampleEntityGeneratorInterface: '@layout_builder.sample_entity_generator'
++  layout_builder.render_block_component_subscriber:
++    class: Drupal\layout_builder\EventSubscriber\BlockComponentRenderArray
++    arguments: ['@current_user']
++    tags:
++      - { name: event_subscriber }
++  logger.channel.layout_builder:
++    parent: logger.channel_base
++    arguments: ['layout_builder']
++  inline_block.usage:
++    class: Drupal\layout_builder\InlineBlockUsage
++    arguments: ['@database']
++  Drupal\layout_builder\InlineBlockUsageInterface: '@inline_block.usage'
++  layout_builder.controller.entity_form:
++    # Override the entity form controller to handle the entity layout_builder
++    # operation.
++    decorates: controller.entity_form
++    class: Drupal\layout_builder\Controller\LayoutBuilderHtmlEntityFormController
++    public: false
++    arguments: ['@layout_builder.controller.entity_form.inner']
++  Drupal\layout_builder\Controller\LayoutBuilderHtmlEntityFormController: '@layout_builder.controller.entity_form'
++  layout_builder.element.prepare_layout:
++    class: Drupal\layout_builder\EventSubscriber\PrepareLayout
++    arguments: ['@layout_builder.tempstore_repository', '@messenger']
++    tags:
++      - { name: event_subscriber }
+diff --git a/core/modules/layout_builder/src/Access/LayoutBuilderLockAccessCheck.php b/core/modules/layout_builder/src/Access/LayoutBuilderLockAccessCheck.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..7f8e8f403b081b8fce55e72072d23bdc7db89afe
+--- /dev/null
++++ b/core/modules/layout_builder/src/Access/LayoutBuilderLockAccessCheck.php
+@@ -0,0 +1,54 @@
++<?php
++
++namespace Drupal\layout_builder\Access;
++
++use Drupal\Core\Access\AccessResult;
++use Drupal\Core\Routing\Access\AccessInterface;
++use Drupal\Core\Session\AccountInterface;
++use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
++use Drupal\layout_builder\SectionStorageInterface;
++
++/**
++ * Checks access based on whether the layout is locked.
++ *
++ * @ingroup layout_builder_access
++ *
++ * @internal
++ *   Tagged services are internal.
++ */
++class LayoutBuilderLockAccessCheck implements AccessInterface {
++
++  /**
++   * The layout tempstore repository.
++   *
++   * @var \Drupal\layout_builder\LayoutTempstoreRepositoryInterface
++   */
++  protected $layoutTempstoreRepository;
++
++  /**
++   * Constructs a LayoutBuilderLockAccessCheck.
++   *
++   * @param \Drupal\layout_builder\LayoutTempstoreRepositoryInterface $layout_tempstore_repository
++   *   The layout tempstore repository.
++   */
++  public function __construct(LayoutTempstoreRepositoryInterface $layout_tempstore_repository) {
++    $this->layoutTempstoreRepository = $layout_tempstore_repository;
++  }
++
++  /**
++   * Checks for a lock on the layout.
++   *
++   * @param \Drupal\layout_builder\SectionStorageInterface $section_storage
++   *   The section storage.
++   * @param \Drupal\Core\Session\AccountInterface $account
++   *   The current user.
++   *
++   * @return \Drupal\Core\Access\AccessResultInterface
++   *   The access result.
++   */
++  public function access(SectionStorageInterface $section_storage, AccountInterface $account) {
++    $lock = $this->layoutTempstoreRepository->getLock($section_storage);
++    return AccessResult::allowedIf(!$lock || $account->id() === $lock->getOwnerId())->setCacheMaxAge(0);
++  }
++
++}
+diff --git a/core/modules/layout_builder/src/Access/LayoutBuilderTranslationAccessCheck.php b/core/modules/layout_builder/src/Access/LayoutBuilderTranslationAccessCheck.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..eaddc44e33a8875f1aa9f74640c481f20557e3c0
+--- /dev/null
++++ b/core/modules/layout_builder/src/Access/LayoutBuilderTranslationAccessCheck.php
+@@ -0,0 +1,52 @@
++<?php
++
++namespace Drupal\layout_builder\Access;
++
++use Drupal\Core\Access\AccessResult;
++use Drupal\Core\Routing\Access\AccessInterface;
++use Drupal\layout_builder\LayoutEntityHelperTrait;
++use Drupal\layout_builder\SectionStorageInterface;
++use Symfony\Component\Routing\Route;
++
++/**
++ * Provides an access check for the Layout Builder translations.
++ *
++ * @ingroup layout_builder_access
++ *
++ * @internal
++ *   Tagged services are internal.
++ */
++class LayoutBuilderTranslationAccessCheck implements AccessInterface {
++
++  use LayoutEntityHelperTrait;
++
++  /**
++   * Checks routing access to the default translation only layout.
++   *
++   * @param \Drupal\layout_builder\SectionStorageInterface $section_storage
++   *   The section storage.
++   * @param \Symfony\Component\Routing\Route $route
++   *   The route to check against.
++   *
++   * @return \Drupal\Core\Access\AccessResultInterface
++   *   The access result.
++   */
++  public function access(SectionStorageInterface $section_storage, Route $route) {
++    $translation_type = $route->getRequirement('_layout_builder_translation_access');
++    $is_translation = static::isTranslation($section_storage);
++    switch ($translation_type) {
++      case 'untranslated':
++        $access = AccessResult::allowedIf(!$is_translation);
++        break;
++
++      case 'translated':
++        $access = AccessResult::allowedIf($is_translation);
++        break;
++
++      default:
++        throw new \UnexpectedValueException("Unexpected _layout_builder_translation_access route requirement: $translation_type");
++    }
++    return $access;
++  }
++
++}
+diff --git a/core/modules/layout_builder/src/Element/LayoutBuilder.php b/core/modules/layout_builder/src/Element/LayoutBuilder.php
+index 2676d5a0dba64e9e0ece9ef50cbfa9fe9017109f..bbcb3ef377b53648a5ca3313ecefc381dafc5306 100644
+--- a/core/modules/layout_builder/src/Element/LayoutBuilder.php
++++ b/core/modules/layout_builder/src/Element/LayoutBuilder.php
+@@ -2,7 +2,9 @@
+ 
+ namespace Drupal\layout_builder\Element;
+ 
++use Drupal\Component\Plugin\DerivativeInspectionInterface;
+ use Drupal\Core\Ajax\AjaxHelperTrait;
++use Drupal\Core\Entity\EntityTypeManagerInterface;
+ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+ use Drupal\Core\Plugin\PluginFormInterface;
+ use Drupal\Core\Render\Attribute\RenderElement;
+@@ -13,6 +15,7 @@
+ use Drupal\layout_builder\Event\PrepareLayoutEvent;
+ use Drupal\layout_builder\LayoutBuilderEvents;
+ use Drupal\layout_builder\LayoutBuilderHighlightTrait;
++use Drupal\layout_builder\LayoutEntityHelperTrait;
+ use Drupal\layout_builder\SectionStorageInterface;
+ use Symfony\Component\DependencyInjection\ContainerInterface;
+ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+@@ -29,6 +32,7 @@ class LayoutBuilder extends RenderElementBase implements ContainerFactoryPluginI
+   use AjaxHelperTrait;
+   use LayoutBuilderContextTrait;
+   use LayoutBuilderHighlightTrait;
++  use LayoutEntityHelperTrait;
+ 
+   /**
+    * The event dispatcher.
+@@ -37,6 +41,13 @@ class LayoutBuilder extends RenderElementBase implements ContainerFactoryPluginI
+    */
+   protected $eventDispatcher;
+ 
++  /**
++   * The entity type manager.
++   *
++   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
++   */
++  protected $entityTypeManager;
++
+   /**
+    * Constructs a new LayoutBuilder.
+    *
+@@ -48,10 +59,17 @@ class LayoutBuilder extends RenderElementBase implements ContainerFactoryPluginI
+    *   The plugin implementation definition.
+    * @param \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $event_dispatcher
+    *   The event dispatcher service.
++   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
++   *   The entity type manager.
+    */
+-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EventDispatcherInterface $event_dispatcher) {
++  public function __construct(array $configuration, $plugin_id, $plugin_definition, EventDispatcherInterface $event_dispatcher, EntityTypeManagerInterface $entity_type_manager = NULL) {
+     parent::__construct($configuration, $plugin_id, $plugin_definition);
+     $this->eventDispatcher = $event_dispatcher;
++    if (!$entity_type_manager instanceof EntityTypeManagerInterface) {
++      @trigger_error('The entity_type.manager service must be passed to \Drupal\layout_builder\Element\LayoutBuilder::__construct(). It was added in Drupal 10.3.0 and will be required before Drupal 11.0.0.', E_USER_DEPRECATED);
++      $entity_type_manager = \Drupal::service('entity_type.manager');
++    }
++    $this->entityTypeManager = $entity_type_manager;
+   }
+ 
+   /**
+@@ -62,7 +80,8 @@ public static function create(ContainerInterface $container, array $configuratio
+       $configuration,
+       $plugin_id,
+       $plugin_definition,
+-      $container->get('event_dispatcher')
++      $container->get('event_dispatcher'),
++      $container->get('entity_type.manager')
+     );
+   }
+ 
+@@ -99,6 +118,7 @@ public function preRender($element) {
+    */
+   protected function layout(SectionStorageInterface $section_storage) {
+     $this->prepareLayout($section_storage);
++    $is_translation = static::isTranslation($section_storage);
+ 
+     $output = [];
+     if ($this->isAjax()) {
+@@ -108,11 +128,15 @@ protected function layout(SectionStorageInterface $section_storage) {
+     }
+     $count = 0;
+     for ($i = 0; $i < $section_storage->count(); $i++) {
+-      $output[] = $this->buildAddSectionLink($section_storage, $count);
++      if (!$is_translation) {
++        $output[] = $this->buildAddSectionLink($section_storage, $count);
++      }
+       $output[] = $this->buildAdministrativeSection($section_storage, $count);
+       $count++;
+     }
+-    $output[] = $this->buildAddSectionLink($section_storage, $count);
++    if (!$is_translation) {
++      $output[] = $this->buildAddSectionLink($section_storage, $count);
++    }
+     $output['#attached']['library'][] = 'layout_builder/drupal.layout_builder';
+     // As the Layout Builder UI is typically displayed using the frontend theme,
+     // it is not marked as an administrative page at the route level even though
+@@ -124,6 +148,7 @@ protected function layout(SectionStorageInterface $section_storage) {
+     $output['#attributes']['class'][] = 'layout-builder';
+     // Mark this UI as uncacheable.
+     $output['#cache']['max-age'] = 0;
++
+     return $output;
+   }
+ 
+@@ -222,6 +247,8 @@ protected function buildAdministrativeSection(SectionStorageInterface $section_s
+     $section = $section_storage->getSection($delta);
+ 
+     $layout = $section->getLayout($this->getPopulatedContexts($section_storage));
++    $sections_editable = !static::isTranslation($section_storage);
++    $layout = $section->getLayout();
+     $layout_settings = $section->getLayoutSettings();
+     $section_label = !empty($layout_settings['label']) ? $layout_settings['label'] : $this->t('Section @section', ['@section' => $delta + 1]);
+ 
+@@ -232,33 +259,19 @@ protected function buildAdministrativeSection(SectionStorageInterface $section_s
+     foreach ($layout_definition->getRegions() as $region => $info) {
+       if (!empty($build[$region])) {
+         foreach (Element::children($build[$region]) as $uuid) {
+-          $build[$region][$uuid]['#attributes']['class'][] = 'js-layout-builder-block';
++          if ($sections_editable) {
++            $build[$region][$uuid]['#attributes']['class'][] = 'js-layout-builder-block';
++          }
+           $build[$region][$uuid]['#attributes']['class'][] = 'layout-builder-block';
+           $build[$region][$uuid]['#attributes']['data-layout-block-uuid'] = $uuid;
+           $build[$region][$uuid]['#attributes']['data-layout-builder-highlight-id'] = $this->blockUpdateHighlightId($uuid);
+-          $build[$region][$uuid]['#contextual_links'] = [
+-            'layout_builder_block' => [
+-              'route_parameters' => [
+-                'section_storage_type' => $storage_type,
+-                'section_storage' => $storage_id,
+-                'delta' => $delta,
+-                'region' => $region,
+-                'uuid' => $uuid,
+-              ],
+-              // Add metadata about the current operations available in
+-              // contextual links. This will invalidate the client-side cache of
+-              // links that were cached before the 'move' link was added.
+-              // @see layout_builder.links.contextual.yml
+-              'metadata' => [
+-                'operations' => 'move:update:remove',
+-              ],
+-            ],
+-          ];
++          $build[$region][$uuid]['#contextual_links'] = $this->createContextualLinkElement($section_storage, $delta, $region, $uuid);
+         }
+       }
+ 
+       $build[$region]['layout_builder_add_block']['link'] = [
+         '#type' => 'link',
++        '#access' => $sections_editable,
+         // Add one to the current delta since it is zero-indexed.
+         '#title' => $this->t('Add block <span class="visually-hidden">in @section, @region region</span>', ['@section' => $section_label, '@region' => $region_labels[$region]]),
+         '#url' => Url::fromRoute('layout_builder.choose_block',
+@@ -334,6 +347,7 @@ protected function buildAdministrativeSection(SectionStorageInterface $section_s
+       ],
+       'remove' => [
+         '#type' => 'link',
++        '#access' => $sections_editable,
+         '#title' => $this->t('Remove @section', ['@section' => $section_label]),
+         '#url' => Url::fromRoute('layout_builder.remove_section', [
+           'section_storage_type' => $storage_type,
+@@ -358,8 +372,8 @@ protected function buildAdministrativeSection(SectionStorageInterface $section_s
+       ],
+       'configure' => [
+         '#type' => 'link',
++        '#access' => $layout instanceof PluginFormInterface && $sections_editable,
+         '#title' => $this->t('Configure @section', ['@section' => $section_label]),
+-        '#access' => $layout instanceof PluginFormInterface,
+         '#url' => Url::fromRoute('layout_builder.configure_section', [
+           'section_storage_type' => $storage_type,
+           'section_storage' => $storage_id,
+@@ -379,4 +393,67 @@ protected function buildAdministrativeSection(SectionStorageInterface $section_s
+     ];
+   }
+ 
++  /**
++   * Creates contextual link element for a component.
++   *
++   * @param \Drupal\layout_builder\SectionStorageInterface $section_storage
++   *   The section storage.
++   * @param $delta
++   *   The section delta.
++   * @param $region
++   *   The region.
++   * @param $uuid
++   *   The UUID of the component.
++   * @param $is_translation
++   *   Whether the section storage is handling a translation.
++   *
++   * @return array|null
++   *   The contextual link render array or NULL if none.
++   */
++  protected function createContextualLinkElement(SectionStorageInterface $section_storage, $delta, $region, $uuid) {
++    $section = $section_storage->getSection($delta);
++    $contextual_link_settings = [
++      'route_parameters' => [
++        'section_storage_type' => $section_storage->getStorageType(),
++        'section_storage' => $section_storage->getStorageId(),
++        'delta' => $delta,
++        'region' => $region,
++        'uuid' => $uuid,
++      ],
++    ];
++    if (static::isTranslation($section_storage)) {
++      $contextual_group = 'layout_builder_block_translation';
++      $component = $section->getComponent($uuid);
++      /** @var \Drupal\Core\Language\LanguageInterface $language */
++      if ($language = $section_storage->getTranslationLanguage()) {
++        $contextual_link_settings['route_parameters']['langcode'] = $language->getId();
++      }
++
++      /** @var \Drupal\layout_builder\Plugin\Block\InlineBlock $plugin */
++      $plugin = $component->getPlugin();
++      if ($plugin instanceof DerivativeInspectionInterface && $plugin->getBaseId() === 'inline_block') {
++        $configuration = $plugin->getConfiguration();
++        /** @var \Drupal\block_content\Entity\BlockContent $block */
++        $block = $this->entityTypeManager->getStorage('block_content')
++          ->loadRevision($configuration['block_revision_id']);
++        if ($block && $block->isTranslatable()) {
++          $contextual_group = 'layout_builder_inline_block_translation';
++        }
++      }
++    }
++    else {
++      $contextual_group = 'layout_builder_block';
++      // Add metadata about the current operations available in
++      // contextual links. This will invalidate the client-side cache of
++      // links that were cached before the 'move' link was added.
++      // @see layout_builder.links.contextual.yml
++      $contextual_link_settings['metadata'] = [
++        'operations' => 'move:update:remove',
++      ];
++    }
++    return [
++      $contextual_group => $contextual_link_settings,
++    ];
++  }
++
+ }
+diff --git a/core/modules/layout_builder/src/Entity/LayoutBuilderEntityViewDisplay.php b/core/modules/layout_builder/src/Entity/LayoutBuilderEntityViewDisplay.php
+index 6e058878bfae291b07216181098b0dc075f6fb48..3eebc652a2881c1c086d275b97f2b6f0833021d0 100644
+--- a/core/modules/layout_builder/src/Entity/LayoutBuilderEntityViewDisplay.php
++++ b/core/modules/layout_builder/src/Entity/LayoutBuilderEntityViewDisplay.php
+@@ -232,6 +232,41 @@ protected function addSectionField($entity_type_id, $bundle, $field_name) {
+       $field->setTranslatable(FALSE);
+       $field->save();
+     }
++    $this->addTranslationField($entity_type_id, $bundle, OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME);
++  }
++
++  /**
++   * Adds a layout translation field to a given bundle.
++   *
++   * @param string $entity_type_id
++   *   The entity type ID.
++   * @param string $bundle
++   *   The bundle.
++   * @param string $field_name
++   *   The name for the translation field.
++   */
++  protected function addTranslationField($entity_type_id, $bundle, $field_name) {
++    $field = FieldConfig::loadByName($entity_type_id, $bundle, $field_name);
++    if (!$field) {
++      $field_storage = FieldStorageConfig::loadByName($entity_type_id, $field_name);
++      if (!$field_storage) {
++        $field_storage = FieldStorageConfig::create([
++          'entity_type' => $entity_type_id,
++          'field_name' => $field_name,
++          'type' => 'layout_translation',
++          'locked' => TRUE,
++        ]);
++        $field_storage->setTranslatable(TRUE);
++        $field_storage->save();
++      }
++
++      $field = FieldConfig::create([
++        'field_storage' => $field_storage,
++        'bundle' => $bundle,
++        'label' => t('Layout Labels'),
++      ]);
++      $field->save();
++    }
+   }
+ 
+   /**
+@@ -451,7 +486,7 @@ public function setComponent($name, array $options = []) {
+ 
+       $section = $this->getDefaultSection();
+       $region = $options['region'] ?? $section->getDefaultRegion();
+-      $new_component = (new SectionComponent(\Drupal::service('uuid')->generate(), $region, $configuration));
++      $new_component = new SectionComponent(\Drupal::service('uuid')->generate(), $region, $configuration);
+       $section->appendComponent($new_component);
+     }
+     return $this;
+diff --git a/core/modules/layout_builder/src/EventSubscriber/ComponentPluginTranslate.php b/core/modules/layout_builder/src/EventSubscriber/ComponentPluginTranslate.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..2db9ecc3be936e97aca9346418d51a09e4b4a8cf
+--- /dev/null
++++ b/core/modules/layout_builder/src/EventSubscriber/ComponentPluginTranslate.php
+@@ -0,0 +1,93 @@
++<?php
++
++namespace Drupal\layout_builder\EventSubscriber;
++
++use Drupal\Component\Plugin\ConfigurableInterface;
++use Drupal\Core\Language\LanguageManagerInterface;
++use Drupal\Core\Routing\RouteMatchInterface;
++use Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent;
++use Drupal\layout_builder\LayoutBuilderEvents;
++use Drupal\layout_builder\LayoutEntityHelperTrait;
++use Symfony\Component\EventDispatcher\EventSubscriberInterface;
++
++/**
++ * Translates the plugin configuration if needed.
++ *
++ * @internal
++ *   Tagged services are internal.
++ */
++class ComponentPluginTranslate implements EventSubscriberInterface {
++
++  use LayoutEntityHelperTrait;
++
++  /**
++   * The language manager.
++   *
++   * @var \Drupal\Core\Language\LanguageManagerInterface
++   */
++  protected $languageManager;
++
++  /**
++   * The current route match.
++   *
++   * @var \Drupal\Core\Routing\RouteMatchInterface
++   */
++  protected $routeMatch;
++
++  /**
++   * Creates a ComponentPluginTranslate object.
++   *
++   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
++   *   The language manager.
++   * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
++   *   The current route match.
++   */
++  public function __construct(LanguageManagerInterface $language_manager, RouteMatchInterface $route_match) {
++    $this->languageManager = $language_manager;
++    $this->routeMatch = $route_match;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public static function getSubscribedEvents() {
++    $events[LayoutBuilderEvents::SECTION_COMPONENT_BUILD_RENDER_ARRAY] = ['onBuildRender', 200];
++    return $events;
++  }
++
++  /**
++   * Translates the plugin configuration if needed.
++   *
++   * @param \Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent $event
++   *   The section component render event.
++   */
++  public function onBuildRender(SectionComponentBuildRenderArrayEvent $event) {
++    if (!$this->languageManager->isMultilingual()) {
++      return;
++    }
++    $plugin = $event->getPlugin();
++    $contexts = $event->getContexts();
++    $component = $event->getComponent();
++    if (!$plugin instanceof ConfigurableInterface || !isset($contexts['layout_builder.entity'])) {
++      return;
++    }
++
++    // @todo Change to 'entity' in https://www.drupal.org/node/3018782.
++    $entity = $contexts['layout_builder.entity']->getContextValue();
++    $configuration = $plugin->getConfiguration();
++    if ($event->inPreview()) {
++      $section_storage = $this->routeMatch->getParameter('section_storage');
++    }
++    else {
++      $section_storage = $this->getSectionStorageForEntity($entity);
++    }
++
++    if ($section_storage && static::isTranslation($section_storage)) {
++      if ($translated_plugin_configuration = $section_storage->getTranslatedComponentConfiguration($component->getUuid())) {
++        $translated_plugin_configuration = array_replace_recursive($configuration, $translated_plugin_configuration);
++        $plugin->setConfiguration($translated_plugin_configuration);
++      }
++    }
++  }
++
++}
+diff --git a/core/modules/layout_builder/src/Field/LayoutTranslationItemList.php b/core/modules/layout_builder/src/Field/LayoutTranslationItemList.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..66830ae13bb0feadf7319ff2acb8b1cd9b9af91e
+--- /dev/null
++++ b/core/modules/layout_builder/src/Field/LayoutTranslationItemList.php
+@@ -0,0 +1,21 @@
++<?php
++
++namespace Drupal\layout_builder\Field;
++
++use Drupal\Core\Access\AccessResult;
++use Drupal\Core\Field\FieldItemList;
++use Drupal\Core\Session\AccountInterface;
++
++class LayoutTranslationItemList extends FieldItemList {
++
++  /**
++   * Overrides \Drupal\Core\Field\FieldItemListInterface::defaultAccess().
++   *
++   * @ingroup layout_builder_access
++   */
++  public function defaultAccess($operation = 'view', AccountInterface $account = NULL) {
++    // @todo Allow access in https://www.drupal.org/node/2942975.
++    return AccessResult::forbidden();
++  }
++
++}
+diff --git a/core/modules/layout_builder/src/Form/BlockContentInlineBlockTranslateForm.php b/core/modules/layout_builder/src/Form/BlockContentInlineBlockTranslateForm.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..79165e95f35e0c449bb62cf54fe9a408eb536ede
+--- /dev/null
++++ b/core/modules/layout_builder/src/Form/BlockContentInlineBlockTranslateForm.php
+@@ -0,0 +1,144 @@
++<?php
++
++namespace Drupal\layout_builder\Form;
++
++use Drupal\block_content\BlockContentForm;
++use Drupal\Component\Datetime\TimeInterface;
++use Drupal\Core\Entity\EntityRepositoryInterface;
++use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
++use Drupal\Core\Form\FormStateInterface;
++use Drupal\Core\Routing\RouteMatchInterface;
++use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
++use Symfony\Component\DependencyInjection\ContainerInterface;
++
++/**
++ * Provides a form class for translating inline blocks in the Layout Builder.
++ *
++ * @internal
++ *   Form classes are internal.
++ */
++class BlockContentInlineBlockTranslateForm extends BlockContentForm {
++
++  /**
++   * The layout tempstore repository.
++   *
++   * @var \Drupal\layout_builder\LayoutTempstoreRepositoryInterface
++   */
++  protected $layoutTempstoreRepository;
++
++  /**
++   * The component UUID.
++   *
++   * @var string
++   */
++  protected $uuid;
++
++  /**
++   * The section delta.
++   *
++   * @var int
++   */
++  protected $delta;
++
++  /**
++   * The section storage.
++   *
++   * @var \Drupal\layout_builder\TranslatableSectionStorageInterface
++   */
++  protected $sectionStorage;
++
++  /**
++   * {@inheritdoc}
++   */
++  public function __construct(EntityRepositoryInterface $entity_repository, EntityTypeBundleInfoInterface $entity_type_bundle_info = NULL, TimeInterface $time = NULL, RouteMatchInterface $route_match = NULL, LayoutTempstoreRepositoryInterface $tempstore = NULL) {
++    parent::__construct($entity_repository, $entity_type_bundle_info, $time);
++    $this->routeMatch = $route_match;
++    $this->layoutTempstoreRepository = $tempstore;
++    $this->uuid = $route_match->getParameter('uuid');
++    $this->delta = $route_match->getParameter('delta');
++    $this->sectionStorage = $route_match->getParameter('section_storage');
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public static function create(ContainerInterface $container) {
++    return new static(
++      $container->get('entity.repository'),
++      $container->get('entity_type.bundle.info'),
++      $container->get('datetime.time'),
++      $container->get('current_route_match'),
++      $container->get('layout_builder.tempstore_repository')
++    );
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getEntityFromRouteMatch(RouteMatchInterface $route_match, $entity_type_id) {
++    /** @var \Drupal\layout_builder\TranslatableSectionStorageInterface $section_storage */
++    $translated_configuration = $this->sectionStorage->getTranslatedComponentConfiguration($this->uuid);
++    $langcode = $this->sectionStorage->getTranslationLanguage()->getId();
++
++    if (!empty($translated_configuration)) {
++      if (!empty($translated_configuration['block_serialized'])) {
++        return unserialize($translated_configuration['block_serialized']);
++      }
++      elseif (!empty($translated_configuration['block_revision_id'])) {
++        /** @var \Drupal\block_content\BlockContentInterface $entity */
++        $entity = $this->entityTypeManager->getStorage('block_content')->loadRevision($translated_configuration['block_revision_id']);
++        $entity = $this->entityRepository->getActive('block_content', $entity->id());
++        if ($entity->hasTranslation($langcode)) {
++          return $entity->getTranslation($langcode);
++        }
++      }
++    }
++    $configuration = $this->sectionStorage->getSection($this->delta)->getComponent($this->uuid)->getPlugin()->getConfiguration();
++    if (!empty($configuration['block_revision_id'])) {
++      /** @var \Drupal\block_content\BlockContentInterface $entity */
++      $entity = $this->entityTypeManager->getStorage('block_content')->loadRevision($configuration['block_revision_id']);
++      $entity = $this->entityRepository->getActive('block_content', $entity->id());
++      if ($entity->hasTranslation($langcode)) {
++        return $entity->getTranslation($langcode);
++      }
++      else {
++        $translation = $entity->addTranslation($langcode, $entity->toArray());
++        if (!empty($translated_configuration['label'])) {
++          $translation->setInfo($translated_configuration['label']);
++        }
++        return $translation;
++      }
++    }
++    else {
++      throw new \LogicException("InlineBlockTranslationForm should never be invoked without an available block_content entity");
++    }
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function save(array $form, FormStateInterface $form_state) {
++    $entity = $this->entity;
++    $translated_configuration = $this->sectionStorage->getTranslatedComponentConfiguration($this->uuid);
++    $translated_configuration['block_serialized'] = serialize($entity);
++    $translated_configuration['label'] = $entity->label();
++    $this->sectionStorage->setTranslatedComponentConfiguration($this->uuid, $translated_configuration);
++    $this->layoutTempstoreRepository->set($this->sectionStorage);
++
++    return $entity->isNew() ? SAVED_NEW : SAVED_UPDATED;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function form(array $form, FormStateInterface $form_state) {
++    $form = parent::form($form, $form_state);
++    // The language of the translation cannot be changed.
++    $form['langcode']['#access'] = FALSE;
++    $form['revision_log']['#access'] = FALSE;
++    // Creating new revisions is based on the entity with the layout.
++    $form['revision']['#access'] = FALSE;
++    return $form;
++  }
++
++}
+diff --git a/core/modules/layout_builder/src/Form/OverridesEntityForm.php b/core/modules/layout_builder/src/Form/OverridesEntityForm.php
+index 236441bc4eeb9d777a58901371e2b252e45555e0..8f8e44ff1c601ba851934597de15d590b29162c7 100644
+--- a/core/modules/layout_builder/src/Form/OverridesEntityForm.php
++++ b/core/modules/layout_builder/src/Form/OverridesEntityForm.php
+@@ -4,12 +4,13 @@
+ 
+ use Drupal\Component\Datetime\TimeInterface;
+ use Drupal\Core\Entity\ContentEntityForm;
+-use Drupal\Core\Entity\Entity\EntityFormDisplay;
+ use Drupal\Core\Entity\EntityInterface;
+ use Drupal\Core\Entity\EntityRepositoryInterface;
+ use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
++use Drupal\Core\Entity\Entity\EntityFormDisplay;
+ use Drupal\Core\Form\FormStateInterface;
+ use Drupal\Core\Form\WorkspaceDynamicSafeFormInterface;
++use Drupal\layout_builder\LayoutEntityHelperTrait;
+ use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
+ use Drupal\layout_builder\OverridesSectionStorageInterface;
+ use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
+@@ -27,6 +28,7 @@ class OverridesEntityForm extends ContentEntityForm implements WorkspaceDynamicS
+   use PreviewToggleTrait;
+   use LayoutBuilderEntityFormTrait;
+   use WorkspaceSafeFormTrait;
++  use LayoutEntityHelperTrait;
+ 
+   /**
+    * Layout tempstore repository.
+@@ -78,7 +80,10 @@ protected function init(FormStateInterface $form_state) {
+     parent::init($form_state);
+ 
+     $form_display = EntityFormDisplay::collectRenderDisplay($this->entity, $this->getOperation(), FALSE);
+-    $form_display->setComponent(OverridesSectionStorage::FIELD_NAME, [
++    $field_name = static::isTranslation($this->sectionStorage) ?
++      OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME :
++      OverridesSectionStorage::FIELD_NAME;
++    $form_display->setComponent($field_name, [
+       'type' => 'layout_builder_widget',
+       'weight' => -10,
+       'settings' => [],
+@@ -99,6 +104,7 @@ public function buildForm(array $form, FormStateInterface $form_state, ?SectionS
+     //   restricts all access to the field, explicitly allow access here until
+     //   https://www.drupal.org/node/2942975 is resolved.
+     $form[OverridesSectionStorage::FIELD_NAME]['#access'] = TRUE;
++    $form[OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME]['#access'] = TRUE;
+ 
+     $form['layout_builder_message'] = $this->buildMessage($section_storage->getContextValue('entity'), $section_storage);
+     return $form;
+@@ -169,12 +175,16 @@ protected function actions(array $form, FormStateInterface $form_state) {
+     $actions['discard_changes']['#limit_validation_errors'] = [];
+     // @todo This button should be conditionally displayed, see
+     //   https://www.drupal.org/node/2917777.
+-    $actions['revert'] = [
+-      '#type' => 'submit',
+-      '#value' => $this->t('Revert to defaults'),
+-      '#submit' => ['::redirectOnSubmit'],
+-      '#redirect' => 'revert',
+-    ];
++    if (!static::isTranslation($this->sectionStorage)) {
++        // @todo This button should be conditionally displayed, see
++        //   https://www.drupal.org/node/2917777.
++        $actions['revert'] = [
++            '#type' => 'submit',
++            '#value' => $this->t('Revert to defaults'),
++            '#submit' => ['::redirectOnSubmit'],
++            '#redirect' => 'revert',
++        ];
++    }
+     return $actions;
+   }
+ 
+diff --git a/core/modules/layout_builder/src/Form/TranslateBlockForm.php b/core/modules/layout_builder/src/Form/TranslateBlockForm.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..9812a40e687c1631aab0dc564e6557b354c7150e
+--- /dev/null
++++ b/core/modules/layout_builder/src/Form/TranslateBlockForm.php
+@@ -0,0 +1,218 @@
++<?php
++
++namespace Drupal\layout_builder\Form;
++
++use Drupal\Component\Utility\Html;
++use Drupal\config_translation\Form\ConfigTranslationFormBase;
++use Drupal\Core\Ajax\AjaxFormHelperTrait;
++use Drupal\Core\Config\TypedConfigManagerInterface;
++use Drupal\Core\Extension\ModuleHandlerInterface;
++use Drupal\Core\Form\FormBase;
++use Drupal\Core\Form\FormStateInterface;
++use Drupal\Core\Language\LanguageInterface;
++use Drupal\Core\TypedData\TraversableTypedDataInterface;
++use Drupal\layout_builder\Controller\LayoutRebuildTrait;
++use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
++use Drupal\layout_builder\TranslatableSectionStorageInterface;
++use Symfony\Component\DependencyInjection\ContainerInterface;
++
++/**
++ * Provides a form to translate a block plugin in the Layout Builder.
++ *
++ * @internal
++ *   Form classes are internal.
++ */
++class TranslateBlockForm extends FormBase {
++
++  use AjaxFormHelperTrait;
++  use LayoutRebuildTrait;
++
++  /**
++   * The section storage.
++   *
++   * @var \Drupal\layout_builder\TranslatableSectionStorageInterface
++   */
++  protected $sectionStorage;
++
++  /**
++   * The UUID of the component.
++   *
++   * @var string
++   */
++  protected $uuid;
++
++  /**
++   * The layout tempstore repository.
++   *
++   * @var \Drupal\layout_builder\LayoutTempstoreRepositoryInterface
++   */
++  protected $layoutTempstoreRepository;
++
++  /**
++   * The module handler.
++   *
++   * @var \Drupal\Core\Extension\ModuleHandlerInterface
++   */
++  protected $moduleHandler;
++
++  /**
++   * @var \Drupal\Core\Config\TypedConfigManagerInterface
++   */
++  protected $typedConfigManager;
++
++  /**
++   * Constructs a new TranslateBlockForm.
++   */
++  public function __construct(LayoutTempstoreRepositoryInterface $layout_tempstore_repository, ModuleHandlerInterface $module_handler, TypedConfigManagerInterface $typed_config_manager) {
++    $this->layoutTempstoreRepository = $layout_tempstore_repository;
++    $this->moduleHandler = $module_handler;
++    $this->typedConfigManager = $typed_config_manager;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public static function create(ContainerInterface $container) {
++    return new static(
++      $container->get('layout_builder.tempstore_repository'),
++      $container->get('module_handler'),
++      $container->get('config.typed')
++    );
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getFormId() {
++    return 'layout_builder_block_translation';
++  }
++
++  /**
++   * Builds the block translation form.
++   *
++   * @param array $form
++   *   An associative array containing the structure of the form.
++   * @param \Drupal\Core\Form\FormStateInterface $form_state
++   *   The current state of the form.
++   * @param \Drupal\layout_builder\TranslatableSectionStorageInterface $section_storage
++   *   The section storage being configured.
++   * @param int $delta
++   *   The delta of the section.
++   * @param string $region
++   *   The region of the block.
++   * @param string $uuid
++   *   The UUID of the block being updated.
++   *
++   * @return array
++   *   The form array.
++   */
++  public function buildForm(array $form, FormStateInterface $form_state, TranslatableSectionStorageInterface $section_storage = NULL, $delta = NULL, $region = NULL, $uuid = NULL) {
++    $component = $section_storage->getSection($delta)->getComponent($uuid);
++
++    $this->sectionStorage = $section_storage;
++    $this->uuid = $component->getUuid();
++
++    $configuration = $component->getPlugin()->getConfiguration();
++    $type_definition = $this->typedConfigManager->getDefinition('block.settings.' . $component->getPlugin()->getPluginId());
++    /** @var \Drupal\Core\TypedData\DataDefinitionInterface $definition */
++    $definition = new $type_definition['definition_class']($type_definition);
++    $definition->setClass($type_definition['class']);
++
++    /** @var \Drupal\Core\Config\Schema\Mapping $typed_data */
++    $typed_data = $type_definition['class']::createInstance($definition);
++    $typed_data->setValue($configuration);
++    $translated_config = $this->sectionStorage->getTranslatedComponentConfiguration($this->uuid);
++    foreach (array_keys($configuration) as $key) {
++      if (!isset($translated_config[$key])) {
++        $translated_config[$key] = NULL;
++      }
++    }
++
++    $form['translation'] = $this->createTranslationElement($section_storage->getSourceLanguage(), $section_storage->getTranslationLanguage(), $typed_data, $translated_config);
++    $form['submit'] = [
++      '#type' => 'submit',
++      '#value' => $this->t('Translate'),
++    ];
++
++    if ($this->isAjax()) {
++      $form['submit']['#ajax']['callback'] = '::ajaxSubmit';
++      // @todo static::ajaxSubmit() requires data-drupal-selector to be the same
++      //   between the various Ajax requests. A bug in
++      //   \Drupal\Core\Form\FormBuilder prevents that from happening unless
++      //   $form['#id'] is also the same. Normally, #id is set to a unique HTML
++      //   ID via Html::getUniqueId(), but here we bypass that in order to work
++      //   around the data-drupal-selector bug. This is okay so long as we
++      //   assume that this form only ever occurs once on a page. Remove this
++      //   workaround in https://www.drupal.org/node/2897377.
++      $form['#id'] = Html::getId($form_state->getBuildInfo()['form_id']);
++    }
++    return $form;
++  }
++
++  /**
++   * Creates translation element.
++   *
++   * @param \Drupal\Core\Language\LanguageInterface $source_language
++   *   The source language.
++   * @param \Drupal\Core\Language\LanguageInterface $translation_language
++   *   The translation language.
++   * @param \Drupal\Core\TypedData\TraversableTypedDataInterface $typed_data
++   *   The typed data of the configuration settings.
++   * @param array $translated_configuration
++   *   The translated configuration.
++   *
++   * @return array
++   *   The translation element render array.
++   */
++  protected function createTranslationElement(LanguageInterface $source_language, LanguageInterface $translation_language, TraversableTypedDataInterface $typed_data, array $translated_configuration) {
++    if ($this->moduleHandler->moduleExists('config_translation')) {
++      // If config_translation is installed let it handle creating complex
++      // schema.
++      $form_element = ConfigTranslationFormBase::createFormElement($typed_data);
++      $element_build = $form_element->getTranslationBuild($source_language, $translation_language, $typed_data->getValue(), $translated_configuration, []);
++    }
++    else {
++      /** @var \Drupal\Core\TypedData\TypedDataInterface $typed_datum */
++      foreach ($typed_data as $key => $typed_datum) {
++        $definition = $typed_datum->getDataDefinition();
++        $data_type = $definition->getDataType();
++
++        // Provide translation of top level label and text items.
++        if ($data_type === 'label' || $data_type === 'text') {
++          $element_build[$key]['source'] = [
++            '#type' => 'item',
++            '#title' => $this->t($definition->getLabel()),
++            '#markup' => $typed_datum->getValue() ?: '(' . $this->t('Empty') . ')',
++            '#parents' => ['source', $key],
++          ];
++          $element_build[$key]['translation'] = [
++            '#type' => $data_type === 'label' ? 'textfield' : 'textarea',
++            '#title' => $this->t($definition->getLabel()),
++            '#default_value' => isset($translated_configuration[$key]) ? $translated_configuration[$key] : '',
++            '#parents' => ['translation', $key],
++          ];
++        }
++      }
++    }
++    $element_build['#tree'] = TRUE;
++    return $element_build;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function submitForm(array &$form, FormStateInterface $form_state) {
++    $section_storage = $this->sectionStorage;
++    $section_storage->setTranslatedComponentConfiguration($this->uuid, $form_state->getValue('translation'));
++    $this->layoutTempstoreRepository->set($this->sectionStorage);
++    $form_state->setRedirectUrl($this->sectionStorage->getLayoutBuilderUrl());
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function successfulAjaxSubmit(array $form, FormStateInterface $form_state) {
++    return $this->rebuildAndClose($this->sectionStorage);
++  }
++
++}
+diff --git a/core/modules/layout_builder/src/InlineBlockEntityOperations.php b/core/modules/layout_builder/src/InlineBlockEntityOperations.php
+index 25717b33e6edd2cd573c0db9e2f8e137e224ed5e..b4f654745c8566b49b0c8b45f53dfab4494c6e42 100644
+--- a/core/modules/layout_builder/src/InlineBlockEntityOperations.php
++++ b/core/modules/layout_builder/src/InlineBlockEntityOperations.php
+@@ -2,6 +2,7 @@
+ 
+ namespace Drupal\layout_builder;
+ 
++use Drupal\Core\Block\BlockManagerInterface;
+ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+ use Drupal\Core\Entity\EntityInterface;
+ use Drupal\Core\Entity\EntityTypeManagerInterface;
+@@ -41,6 +42,13 @@ class InlineBlockEntityOperations implements ContainerInjectionInterface {
+    */
+   protected $entityTypeManager;
+ 
++  /**
++   * The block plugin manager.
++   *
++   * @var \Drupal\Core\Block\BlockManagerInterface
++   */
++  protected $blockManager;
++
+   /**
+    * Constructs a new EntityOperations object.
+    *
+@@ -50,12 +58,19 @@ class InlineBlockEntityOperations implements ContainerInjectionInterface {
+    *   Inline block usage tracking service.
+    * @param \Drupal\layout_builder\SectionStorage\SectionStorageManagerInterface $section_storage_manager
+    *   The section storage manager.
++   * @param \Drupal\Core\Block\BlockManagerInterface|null $block_manager
++   *   (optional) The block manager;
+    */
+-  public function __construct(EntityTypeManagerInterface $entityTypeManager, InlineBlockUsageInterface $usage, SectionStorageManagerInterface $section_storage_manager) {
++  public function __construct(EntityTypeManagerInterface $entityTypeManager, InlineBlockUsageInterface $usage, SectionStorageManagerInterface $section_storage_manager, BlockManagerInterface $block_manager = NULL) {
+     $this->entityTypeManager = $entityTypeManager;
+     $this->blockContentStorage = $entityTypeManager->getStorage('block_content');
+     $this->usage = $usage;
+     $this->sectionStorageManager = $section_storage_manager;
++    if ($block_manager === NULL) {
++      @trigger_error('The plugin.manager.block service must be passed to \Drupal\layout_builder\InlineBlockEntityOperations::__construct(). It was added in Drupal 10.3.0 and will be required before Drupal 10.0.0.', E_USER_DEPRECATED);
++      $block_manager = \Drupal::service('plugin.manager.block');
++    }
++    $this->blockManager = $block_manager;
+   }
+ 
+   /**
+@@ -65,7 +80,8 @@ public static function create(ContainerInterface $container) {
+     return new static(
+       $container->get('entity_type.manager'),
+       $container->get('inline_block.usage'),
+-      $container->get('plugin.manager.layout_builder.section_storage')
++      $container->get('plugin.manager.layout_builder.section_storage'),
++      $container->get('plugin.manager.block')
+     );
+   }
+ 
+@@ -163,8 +179,17 @@ public function handlePreSave(EntityInterface $entity) {
+       // revisions, when a block is modified, it must always result in the
+       // creation of a new block revision.
+       $new_revision = $entity instanceof RevisionableInterface;
++      $section_storage = $this->getSectionStorageForEntity($entity);
+       foreach ($this->getInlineBlockComponents($sections) as $component) {
+-        $this->saveInlineBlockComponent($entity, $component, $new_revision, $duplicate_blocks);
++        if (static::isTranslation($section_storage)) {
++          $translated_component_configuration = $section_storage->getTranslatedComponentConfiguration($component->getUuid());
++          if (isset($translated_component_configuration['block_serialized'])) {
++            $this->saveTranslatedInlineBlock($entity, $component->getUuid(), $translated_component_configuration, $new_revision);
++          }
++        }
++        else {
++          $this->saveInlineBlockComponent($entity, $component, $new_revision, $duplicate_blocks);
++        }
+       }
+     }
+     $this->removeUnusedForEntityOnSave($entity);
+@@ -238,4 +263,37 @@ protected function saveInlineBlockComponent(EntityInterface $entity, SectionComp
+     $component->setConfiguration($post_save_configuration);
+   }
+ 
++  /**
++   * Saves a translated inline block.
++   *
++   * @param \Drupal\Core\Entity\EntityInterface $entity
++   *   The entity with the layout.
++   * @param string $component_uuid
++   *   The component UUID.
++   * @param array $translated_component_configuration
++   *   The translated component configuration.
++   * @param bool $new_revision
++   *   Whether a new revision of the block should be created.
++   */
++  protected function saveTranslatedInlineBlock(EntityInterface $entity, $component_uuid, array $translated_component_configuration, $new_revision) {
++    /** @var \Drupal\block_content\BlockContentInterface $block */
++    $block = unserialize($translated_component_configuration['block_serialized']);
++    // Create a InlineBlock plugin from the translated configuration in order to
++    // save the block.
++    /** @var \Drupal\layout_builder\Plugin\Block\InlineBlock $plugin */
++    $plugin = $this->blockManager->createInstance('inline_block:' . $block->bundle(), $translated_component_configuration);
++    $plugin->saveBlockContent($new_revision);
++    // Remove serialized block after the block has been saved.
++    unset($translated_component_configuration['block_serialized']);
++
++    // Update the block_revision_id in the translated configuration which may
++    // have changed after saving the block.
++    $configuration = $plugin->getConfiguration();
++    $translated_component_configuration['block_revision_id'] = $configuration['block_revision_id'];
++
++    /** @var \Drupal\layout_builder\TranslatableSectionStorageInterface $section_storage */
++    $section_storage = $this->getSectionStorageForEntity($entity);
++    $section_storage->setTranslatedComponentConfiguration($component_uuid, $translated_component_configuration);
++  }
++
+ }
+diff --git a/core/modules/layout_builder/src/LayoutEntityHelperTrait.php b/core/modules/layout_builder/src/LayoutEntityHelperTrait.php
+index 1abf32217884bc0b29ad6b46e862d79b1814a0fa..4ec2e835138f8a1e64962671ebb9b71f2392f4c1 100644
+--- a/core/modules/layout_builder/src/LayoutEntityHelperTrait.php
++++ b/core/modules/layout_builder/src/LayoutEntityHelperTrait.php
+@@ -155,4 +155,17 @@ private function sectionStorageManager() {
+     return $this->sectionStorageManager ?: \Drupal::service('plugin.manager.layout_builder.section_storage');
+   }
+ 
++  /**
++   * Determines if the sections is for a translation.
++   *
++   * @param \Drupal\layout_builder\SectionStorageInterface $section_storage
++   *   The section storage.
++   *
++   * @return bool
++   *   TRUE if the section storage is for translation otherwise false.
++   */
++  protected static function isTranslation(SectionStorageInterface $section_storage) {
++    return $section_storage instanceof TranslatableSectionStorageInterface && !$section_storage->isDefaultTranslation();
++  }
++
+ }
+diff --git a/core/modules/layout_builder/src/Plugin/Block/InlineBlock.php b/core/modules/layout_builder/src/Plugin/Block/InlineBlock.php
+index cfd853f6e9a6700d9c06ba0733760ebbaae88b02..65dfb24c94761f5e0eb56526cbcb36646dc32e37 100644
+--- a/core/modules/layout_builder/src/Plugin/Block/InlineBlock.php
++++ b/core/modules/layout_builder/src/Plugin/Block/InlineBlock.php
+@@ -9,6 +9,7 @@
+ use Drupal\Core\Block\BlockBase;
+ use Drupal\Core\Entity\Entity\EntityFormDisplay;
+ use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
++use Drupal\Core\Entity\EntityRepositoryInterface;
+ use Drupal\Core\Entity\EntityTypeManagerInterface;
+ use Drupal\Core\Form\FormStateInterface;
+ use Drupal\Core\Form\SubformStateInterface;
+@@ -61,6 +62,13 @@ class InlineBlock extends BlockBase implements ContainerFactoryPluginInterface,
+    */
+   protected $isNew = TRUE;
+ 
++  /**
++   * The entity repository.
++   *
++   * @var \Drupal\Core\Entity\EntityRepositoryInterface
++   */
++  protected $entityRepository;
++
+   /**
+    * The current user.
+    *
+@@ -83,8 +91,10 @@ class InlineBlock extends BlockBase implements ContainerFactoryPluginInterface,
+    *   The entity display repository.
+    * @param \Drupal\Core\Session\AccountInterface $current_user
+    *   The current user.
++   * @param \Drupal\Core\Entity\EntityRepositoryInterface $entity_repository
++   *   The entity repository.
+    */
+-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EntityDisplayRepositoryInterface $entity_display_repository, AccountInterface $current_user) {
++  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EntityDisplayRepositoryInterface $entity_display_repository, AccountInterface $current_user, EntityRepositoryInterface $entity_repository) {
+     parent::__construct($configuration, $plugin_id, $plugin_definition);
+ 
+     $this->entityTypeManager = $entity_type_manager;
+@@ -93,6 +103,7 @@ public function __construct(array $configuration, $plugin_id, $plugin_definition
+     if (!empty($this->configuration['block_revision_id']) || !empty($this->configuration['block_serialized'])) {
+       $this->isNew = FALSE;
+     }
++    $this->entityRepository = $entity_repository;
+   }
+ 
+   /**
+@@ -105,7 +116,8 @@ public static function create(ContainerInterface $container, array $configuratio
+       $plugin_definition,
+       $container->get('entity_type.manager'),
+       $container->get('entity_display.repository'),
+-      $container->get('current_user')
++      $container->get('current_user'),
++      $container->get('entity.repository')
+     );
+   }
+ 
+@@ -126,6 +138,10 @@ public function defaultConfiguration() {
+    */
+   public function blockForm($form, FormStateInterface $form_state) {
+     $block = $this->getEntity();
++    if (!$this->isNew && !$block->isNew() && empty($this->configuration['block_serialized'])) {
++      // Get the active block for editing purposes.
++      $block = $this->entityRepository->getActive('block_content', $block->id());
++    }
+ 
+     // Add the entity form display in a process callback so that #parents can
+     // be successfully propagated to field widgets.
+@@ -166,6 +182,9 @@ public static function processBlockForm(array $element, FormStateInterface $form
+     EntityFormDisplay::collectRenderDisplay($block, 'edit')->buildForm($block, $element, $form_state);
+     $element['revision_log']['#access'] = FALSE;
+     $element['info']['#access'] = FALSE;
++    if (isset($element['langcode'])) {
++      $element['langcode']['#access'] = FALSE;
++    }
+     return $element;
+   }
+ 
+diff --git a/core/modules/layout_builder/src/Plugin/DataType/LayoutTranslationData.php b/core/modules/layout_builder/src/Plugin/DataType/LayoutTranslationData.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..64aeae90e6b29ce8b1645d08ea173bfbba005908
+--- /dev/null
++++ b/core/modules/layout_builder/src/Plugin/DataType/LayoutTranslationData.php
+@@ -0,0 +1,25 @@
++<?php
++
++namespace Drupal\layout_builder\Plugin\DataType;
++
++use Drupal\Core\TypedData\TypedData;
++
++/**
++ * Provides a data type wrapping \Drupal\layout_builder\Section.
++ *
++ * @DataType(
++ *   id = "layout_translation",
++ *   label = @Translation("Layout translation"),
++ *   description = @Translation("A layout translation"),
++ * )
++ */
++class LayoutTranslationData extends TypedData {
++
++  /**
++   * The layout translation.
++   *
++   * @var array
++   */
++  protected $value;
++
++}
+diff --git a/core/modules/layout_builder/src/Plugin/Field/FieldType/LayoutTranslationItem.php b/core/modules/layout_builder/src/Plugin/Field/FieldType/LayoutTranslationItem.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..2d178ed4a7b1f88b18131da8f899ab4ee7fe70fa
+--- /dev/null
++++ b/core/modules/layout_builder/src/Plugin/Field/FieldType/LayoutTranslationItem.php
+@@ -0,0 +1,54 @@
++<?php
++
++namespace Drupal\layout_builder\Plugin\Field\FieldType;
++
++use Drupal\Core\Field\FieldItemBase;
++use Drupal\Core\Field\FieldStorageDefinitionInterface;
++use Drupal\Core\StringTranslation\TranslatableMarkup;
++use Drupal\Core\TypedData\DataDefinition;
++
++/**
++ * Plugin implementation of the 'layout_section' field type.
++ *
++ * @internal
++ *
++ * @FieldType(
++ *   id = "layout_translation",
++ *   label = @Translation("Layout Translation"),
++ *   description = @Translation("Layout Translation"),
++ *   no_ui = TRUE,
++ *   cardinality = 1,
++ *   list_class = "\Drupal\layout_builder\Field\LayoutTranslationItemList",
++ * )
++ */
++class LayoutTranslationItem extends FieldItemBase {
++
++  /**
++   * {@inheritdoc}
++   */
++  public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition) {
++    $properties['value'] = DataDefinition::create('layout_translation')
++      ->setLabel(new TranslatableMarkup('Layout Translation'))
++      ->setRequired(FALSE);
++
++    return $properties;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public static function schema(FieldStorageDefinitionInterface $field_definition) {
++    $schema = [
++      'columns' => [
++        'value' => [
++          'type' => 'blob',
++          'size' => 'normal',
++          'serialize' => TRUE,
++        ],
++      ],
++    ];
++
++    return $schema;
++  }
++
++}
+diff --git a/core/modules/layout_builder/src/Plugin/Field/FieldWidget/LayoutBuilderWidget.php b/core/modules/layout_builder/src/Plugin/Field/FieldWidget/LayoutBuilderWidget.php
+index a6182a2832ec11ffc7e515a199e2f8a46b9d8224..83a73fd08f301022e7385dd3307dfe7faea22f76 100644
+--- a/core/modules/layout_builder/src/Plugin/Field/FieldWidget/LayoutBuilderWidget.php
++++ b/core/modules/layout_builder/src/Plugin/Field/FieldWidget/LayoutBuilderWidget.php
+@@ -7,6 +7,8 @@
+ use Drupal\Core\Field\WidgetBase;
+ use Drupal\Core\Form\FormStateInterface;
+ use Drupal\Core\StringTranslation\TranslatableMarkup;
++use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
++use Drupal\layout_builder\TranslatableSectionStorageInterface;
+ 
+ /**
+  * A widget to display the layout form.
+@@ -59,7 +61,19 @@ public function extractFormValues(FieldItemListInterface $items, array $form, Fo
+       return;
+     }
+ 
+-    $items->setValue($this->getSectionStorage($form_state)->getSections());
++    $field_name = $this->fieldDefinition->getName();
++    $section_storage = $this->getSectionStorage($form_state);
++    if ($field_name === OverridesSectionStorage::FIELD_NAME) {
++      $items->setValue($section_storage->getSections());
++    }
++    elseif ($field_name === OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME && $section_storage instanceof TranslatableSectionStorageInterface) {
++      // The translated configuration is stored in single value field because it
++      // stores configuration for components in all sections.
++      $items->set(0, $section_storage->getTranslatedConfiguration());
++    }
++    else {
++      throw new \LogicException("Widget used with unexpected field, $field_name for section storage: " . $section_storage->getStorageType());
++    }
+   }
+ 
+   /**
+diff --git a/core/modules/layout_builder/src/Plugin/SectionStorage/OverridesSectionStorage.php b/core/modules/layout_builder/src/Plugin/SectionStorage/OverridesSectionStorage.php
+index 7fc7491fb85b14eb0593ef249eb7fc69acc83654..5c05e0ff0d3fd146781d150e31f8c5b29064a479 100644
+--- a/core/modules/layout_builder/src/Plugin/SectionStorage/OverridesSectionStorage.php
++++ b/core/modules/layout_builder/src/Plugin/SectionStorage/OverridesSectionStorage.php
+@@ -21,6 +21,7 @@
+ use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
+ use Drupal\layout_builder\OverridesSectionStorageInterface;
+ use Drupal\layout_builder\SectionStorage\SectionStorageManagerInterface;
++use Drupal\layout_builder\TranslatableSectionStorageInterface;
+ use Symfony\Component\DependencyInjection\ContainerInterface;
+ use Symfony\Component\Routing\RouteCollection;
+ 
+@@ -55,15 +56,22 @@
+   ],
+   handles_permission_check: TRUE,
+ )]
+-class OverridesSectionStorage extends SectionStorageBase implements ContainerFactoryPluginInterface, OverridesSectionStorageInterface, SectionStorageLocalTaskProviderInterface {
++class OverridesSectionStorage extends SectionStorageBase implements ContainerFactoryPluginInterface, OverridesSectionStorageInterface, TranslatableSectionStorageInterface, SectionStorageLocalTaskProviderInterface {
+ 
+   /**
+-   * The field name used by this storage.
++   * The field name for layout sections used by this storage.
+    *
+    * @var string
+    */
+   const FIELD_NAME = 'layout_builder__layout';
+ 
++  /**
++   * The field name for translated configuration used by this storage.
++   *
++   * @var string
++   */
++  const TRANSLATED_CONFIGURATION_FIELD_NAME = 'layout_builder__translation';
++
+   /**
+    * The entity type manager.
+    *
+@@ -206,7 +214,7 @@ public function deriveContextsFromRoute($value, $definition, $name, array $defau
+    */
+   private function extractEntityFromRoute($value, array $defaults) {
+     if (str_contains($value, '.')) {
+-      [$entity_type_id, $entity_id] = explode('.', $value, 2);
++      [$entity_type_id, $entity_id] = explode('.', $value);
+     }
+     elseif (isset($defaults['entity_type_id']) && !empty($defaults[$defaults['entity_type_id']])) {
+       $entity_type_id = $defaults['entity_type_id'];
+@@ -390,8 +398,21 @@ public function access($operation, ?AccountInterface $account = NULL, $return_as
+    */
+   protected function handleTranslationAccess(AccessResult $result, $operation, AccountInterface $account) {
+     $entity = $this->getEntity();
++
++    // This may be invoked for entities that don't have any layout field yet
++    // in case no entity of the bundle/type created any layout yet as the field
++    // is created on demand only once a first layout was created.
++    if (!$entity || !$entity->hasField(static::FIELD_NAME)) {
++      return AccessResult::neutral();
++    }
++
+     // Access is always denied on non-default translations.
+-    return $result->andIf(AccessResult::allowedIf(!($entity instanceof TranslatableInterface && !$entity->isDefaultTranslation())))->addCacheableDependency($entity);
++    $field_config = $entity->getFieldDefinition(static::FIELD_NAME)->getConfig($entity->bundle());
++    // Access is allow if one of the following conditions is true:
++    // 1. This is the default translation.
++    // 2. The entity is translatable and the layout is overridden and the layout
++    //    field is not translatable.
++    return $result->andIf(AccessResult::allowedIf($this->isDefaultTranslation() || ($entity instanceof TranslatableInterface && $this->isOverridden() && !$field_config->isTranslatable())))->addCacheableDependency($entity)->addCacheableDependency($field_config);
+   }
+ 
+   /**
+@@ -414,4 +435,84 @@ public function isOverridden() {
+     return !empty($this->getSections());
+   }
+ 
++  /**
++   * Indicates if the layout is translatable.
++   *
++   * @return bool
++   *   TRUE if the layout is translatable, otherwise FALSE.
++   */
++  protected function isTranslatable() {
++    $entity = $this->getEntity();
++    if ($entity instanceof TranslatableInterface) {
++      return $entity->isTranslatable();
++    }
++    return FALSE;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function isDefaultTranslation() {
++    if ($this->isTranslatable()) {
++      /** @var \Drupal\Core\Entity\TranslatableInterface $entity */
++      $entity = $this->getEntity();
++      return $entity->isDefaultTranslation();
++    }
++    return TRUE;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function setTranslatedComponentConfiguration($uuid, array $configuration) {
++    if (!$this->getEntity()->get(OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME)->isEmpty()) {
++      $translation_settings = $this->getEntity()->get(OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME)->getValue()[0];
++    }
++    $translation_settings['value']['components'][$uuid] = $configuration;
++    $this->getEntity()->set(OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME, [$translation_settings]);
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getTranslatedComponentConfiguration($uuid) {
++    if ($this->getEntity()->get(OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME)->isEmpty()) {
++      return [];
++    }
++    $translation_settings = $this->getEntity()->get(OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME)->getValue()[0];
++    return isset($translation_settings['value']['components'][$uuid]) ? $translation_settings['value']['components'][$uuid] : [];
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getTranslatedConfiguration() {
++    if ($this->getEntity()->get(OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME)->isEmpty()) {
++      return [];
++    }
++    return $this->getEntity()->get(OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME)->getValue()[0];
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getTranslationLanguage() {
++    if (!$this->isDefaultTranslation()) {
++      return $this->getEntity()->language();
++    }
++    return NULL;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getSourceLanguage() {
++    if (!$this->isDefaultTranslation()) {
++      /** @var \Drupal\Core\Entity\TranslatableInterface $entity */
++      $entity = $this->getEntity();
++      return $entity->getUntranslated()->language();
++    }
++    return NULL;
++  }
++
+ }
+diff --git a/core/modules/layout_builder/src/SectionComponent.php b/core/modules/layout_builder/src/SectionComponent.php
+index b0f8ff13e4f3a8a6257411af2cffd78cb394d7c9..388a8a215cace19379bb5914f7ece10da8fdb5d7 100644
+--- a/core/modules/layout_builder/src/SectionComponent.php
++++ b/core/modules/layout_builder/src/SectionComponent.php
+@@ -3,6 +3,7 @@
+ namespace Drupal\layout_builder;
+ 
+ use Drupal\Component\Plugin\Exception\PluginException;
++use Drupal\Core\Config\Entity\ThirdPartySettingsInterface;
+ use Drupal\Core\Plugin\ContextAwarePluginInterface;
+ use Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent;
+ 
+@@ -18,7 +19,7 @@
+  * @see \Drupal\layout_builder\Section
+  * @see \Drupal\layout_builder\SectionStorageInterface
+  */
+-class SectionComponent {
++class SectionComponent implements ThirdPartySettingsInterface {
+ 
+   /**
+    * The UUID of the component.
+@@ -52,9 +53,30 @@ class SectionComponent {
+    * Any additional properties and values.
+    *
+    * @var mixed[]
++   *
++   * @deprecated in drupal:10.2.0 and is removed from drupal:11.0.0.
++   * Additional component properties should be set via ::setThirdPartySetting().
++   *
++   * @see https://www.drupal.org/node/3100177
+    */
+   protected $additional = [];
+ 
++  /**
++   * Third party settings.
++   *
++   * An array of key/value pairs keyed by provider.
++   *
++   * @var mixed[]
++   */
++  protected $thirdPartySettings = [];
++
++  /**
++   * The legacy additional module key created dynamically.
++   *
++   * @var mixed
++   */
++  protected $legacyAdditionalModuleKey;
++
+   /**
+    * Constructs a new SectionComponent.
+    *
+@@ -65,13 +87,24 @@ class SectionComponent {
+    * @param mixed[] $configuration
+    *   The plugin configuration.
+    * @param mixed[] $additional
+-   *   An additional values.
++   *   (optional) Additional values.
++   * @param array[] $third_party_settings
++   *   (optional) Any third party settings.
++   *
++   * @todo Remove $additional argument in
++   *   https://www.drupal.org/project/drupal/issues/3160644 in drupal:11.0.x.
+    */
+-  public function __construct($uuid, $region, array $configuration = [], array $additional = []) {
++  public function __construct($uuid, $region, array $configuration = [], array $additional = [], array $third_party_settings = []) {
+     $this->uuid = $uuid;
+     $this->region = $region;
+     $this->configuration = $configuration;
++    // @todo Remove below $additional code when the drupal:11.0.x branch is opened.
++    // @see https://www.drupal.org/project/drupal/issues/3160644
+     $this->additional = $additional;
++    if ($additional !== []) {
++      @trigger_error('Setting additional properties is deprecated in drupal:10.2.0 and is removed from drupal:11.0.0. Additional component properties should be set via ::setThirdPartySetting(). See https://www.drupal.org/node/3100177', E_USER_DEPRECATED);
++    }
++    $this->thirdPartySettings = $third_party_settings;
+   }
+ 
+   /**
+@@ -99,6 +132,11 @@ public function toRenderArray(array $contexts = [], $in_preview = FALSE) {
+    * @param string $property
+    *   The property to retrieve.
+    *
++   * @deprecated in drupal:10.2.0 and is removed from drupal:11.0.0.
++   * Additional properties should be gotten via ::getThirdPartySetting().
++   *
++   * @see https://www.drupal.org/node/3100177
++   *
+    * @return mixed
+    *   The value for that property, or NULL if the property does not exist.
+    */
+@@ -109,6 +147,7 @@ public function get($property) {
+     else {
+       $value = $this->additional[$property] ?? NULL;
+     }
++    @trigger_error('Getting additional properties is deprecated in drupal:10.2.0 and is removed from drupal:11.0.0. Additional component properties should be gotten via ::getThirdPartySetting(). See https://www.drupal.org/node/3100177', E_USER_DEPRECATED);
+     return $value;
+   }
+ 
+@@ -120,6 +159,11 @@ public function get($property) {
+    * @param mixed $value
+    *   The value to set.
+    *
++   * @deprecated in drupal:10.2.0 and is removed from drupal:11.0.0.
++   * Additional properties should be set via ::setThirdPartySetting().
++   *
++   * @see https://www.drupal.org/node/3100177
++   *
+    * @return $this
+    */
+   public function set($property, $value) {
+@@ -129,6 +173,7 @@ public function set($property, $value) {
+     else {
+       $this->additional[$property] = $value;
+     }
++    @trigger_error('Setting random section component properties is deprecated in drupal:10.2.0 and is removed from drupal:11.0.0. Component properties should be set via dedicated setters. See https://www.drupal.org/node/3100177', E_USER_DEPRECATED);
+     return $this;
+   }
+ 
+@@ -187,7 +232,7 @@ public function setWeight($weight) {
+    * @return mixed[]
+    *   The component plugin configuration.
+    */
+-  protected function getConfiguration() {
++  public function getConfiguration() {
+     return $this->configuration;
+   }
+ 
+@@ -293,7 +338,10 @@ public function toArray() {
+       'region' => $this->getRegion(),
+       'configuration' => $this->getConfiguration(),
+       'weight' => $this->getWeight(),
++      // @todo Remove below key/value when the drupal:11.0.x branch is opened.
++      // @see https://www.drupal.org/project/drupal/issues/3160644
+       'additional' => $this->additional,
++      'third_party_settings' => $this->thirdPartySettings,
+     ];
+   }
+ 
+@@ -309,12 +357,70 @@ public function toArray() {
+    *   The section component object.
+    */
+   public static function fromArray(array $component) {
++    // Ensure expected array keys are present.
++    $component += [
++      'uuid' => '',
++      'region' => '',
++      'configuration' => [],
++      // @todo Remove below key/value when the drupal:11.0.x branch is opened.
++      // @see https://www.drupal.org/project/drupal/issues/3160644
++      'additional' => [],
++      'third_party_settings' => [],
++    ];
+     return (new static(
+       $component['uuid'],
+       $component['region'],
+       $component['configuration'],
+-      $component['additional']
++      // @todo Remove below argument when the drupal:11.0.x branch is opened.
++      // @see https://www.drupal.org/project/drupal/issues/3160644
++      $component['additional'],
++      $component['third_party_settings']
+     ))->setWeight($component['weight']);
+   }
+ 
++  /**
++   * {@inheritdoc}
++   */
++  public function getThirdPartySetting($provider, $key, $default = NULL) {
++    return $this->thirdPartySettings[$provider][$key] ?? $default;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getThirdPartySettings($provider) {
++    return $this->thirdPartySettings[$provider] ?? [];
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function setThirdPartySetting($provider, $key, $value) {
++    $this->thirdPartySettings[$provider][$key] = $value;
++    return $this;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function unsetThirdPartySetting($provider, $key) {
++    unset($this->thirdPartySettings[$provider][$key]);
++    // If the third party is no longer storing any information, completely
++    // remove the array holding the settings for this provider.
++    if (empty($this->thirdPartySettings[$provider])) {
++      unset($this->thirdPartySettings[$provider]);
++    }
++    return $this;
++  }
++
++  /**
++   * Gets the list of third parties that store information.
++   *
++   * @return array
++   *   The list of third parties.
++   */
++  public function getThirdPartyProviders() {
++    return array_keys($this->thirdPartySettings);
++  }
++
+ }
+diff --git a/core/modules/layout_builder/src/TranslatableSectionStorageInterface.php b/core/modules/layout_builder/src/TranslatableSectionStorageInterface.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..88aa16dfa1d029ee420938b007b50b942d8b72ed
+--- /dev/null
++++ b/core/modules/layout_builder/src/TranslatableSectionStorageInterface.php
+@@ -0,0 +1,65 @@
++<?php
++
++namespace Drupal\layout_builder;
++
++/**
++ * Defines an interface for translatable section overrides.
++ */
++interface TranslatableSectionStorageInterface extends SectionStorageInterface {
++
++  /**
++   * Indicates if the layout is default translation layout.
++   *
++   * @return bool
++   *   TRUE if the layout is the default translation layout, otherwise FALSE.
++   */
++  public function isDefaultTranslation();
++
++  /**
++   * Sets the translated component configuration.
++   *
++   * @param string $uuid
++   *   The component UUID.
++   * @param array $configuration
++   *   The component's translated configuration.
++   */
++  public function setTranslatedComponentConfiguration($uuid, array $configuration);
++
++  /**
++   * Gets the translated component configuration.
++   *
++   * @param string $uuid
++   *   The component UUID.
++   *
++   * @return array
++   *   The component's translated configuration.
++   */
++  public function getTranslatedComponentConfiguration($uuid);
++
++  /**
++   * Gets the translated configuration for the layout.
++   *
++   * @return array
++   *   The translated configuration for the layout.
++   */
++  public function getTranslatedConfiguration();
++
++  /**
++   * Gets the language of the translation if any.
++   *
++   * @return \Drupal\Core\Language\LanguageInterface|null
++   *   The translation language if the current layout is for a translation
++   *   otherwise NULL.
++   */
++  public function getTranslationLanguage();
++
++  /**
++   * Gets the source language of the translation if any.
++   *
++   * @return \Drupal\Core\Language\LanguageInterface|null
++   *   The translation source language if the current layout is for a
++   *   translation otherwise NULL.
++   */
++  public function getSourceLanguage();
++
++}
+diff --git a/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/install/core.entity_view_display.entity_test.bundle_with_extra_fields.default.yml b/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/install/core.entity_view_display.entity_test.bundle_with_extra_fields.default.yml
+index 069aa0341957a62481f7451a2204223fe9ccabef..2474784e12fa2c2432d1aee2629f46933d7c8302 100644
+--- a/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/install/core.entity_view_display.entity_test.bundle_with_extra_fields.default.yml
++++ b/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/install/core.entity_view_display.entity_test.bundle_with_extra_fields.default.yml
+@@ -23,6 +23,7 @@ third_party_settings:
+                 entity: layout_builder.entity
+             weight: 1
+             additional: {  }
++            third_party_settings: {  }
+ id: entity_test.bundle_with_extra_fields.default
+ targetEntityType: entity_test
+ bundle: bundle_with_extra_fields
+diff --git a/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/schema/layout_builder_defaults_test.schema.yml b/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/schema/layout_builder_defaults_test.schema.yml
+index cd7d1515260321665c6a5e5808555e7784d25934..f270995dd24913df7f52fcd62d24f40fb3b79796 100644
+--- a/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/schema/layout_builder_defaults_test.schema.yml
++++ b/core/modules/layout_builder/tests/modules/layout_builder_defaults_test/config/schema/layout_builder_defaults_test.schema.yml
+@@ -4,3 +4,9 @@ layout_builder.section.third_party.layout_builder_defaults_test:
+     which_party:
+       label: 'Which party?'
+       type: string
++layout_builder.component.third_party.layout_builder_defaults_test:
++  type: mapping
++  mapping:
++    harold:
++      type: string
++      label: Some arbitrary string.
+diff --git a/core/modules/layout_builder/tests/src/Functional/Jsonapi/LayoutBuilderEntityViewDisplayTest.php b/core/modules/layout_builder/tests/src/Functional/Jsonapi/LayoutBuilderEntityViewDisplayTest.php
+index f4d013797ba43c9a168e91ddb8aa81617be8c60f..ca87e126ad29bdd51764ad812022072cf57bd327 100644
+--- a/core/modules/layout_builder/tests/src/Functional/Jsonapi/LayoutBuilderEntityViewDisplayTest.php
++++ b/core/modules/layout_builder/tests/src/Functional/Jsonapi/LayoutBuilderEntityViewDisplayTest.php
+@@ -46,6 +46,7 @@ protected function getExpectedDocument() {
+     $document = parent::getExpectedDocument();
+     array_unshift($document['data']['attributes']['dependencies']['module'], 'layout_builder');
+     $document['data']['attributes']['hidden'][OverridesSectionStorage::FIELD_NAME] = TRUE;
++    $document['data']['attributes']['hidden'][OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME] = TRUE;
+     $document['data']['attributes']['third_party_settings']['layout_builder'] = [
+       'enabled' => TRUE,
+       'allow_custom' => TRUE,
+diff --git a/core/modules/layout_builder/tests/src/Functional/LayoutBuilderTranslationTest.php b/core/modules/layout_builder/tests/src/Functional/LayoutBuilderTranslationTest.php
+index a64dd16ac5bdd0797b46316848d3359162953d2f..c255e5e5a582edee687d9bd4da8403f83cff3a98 100644
+--- a/core/modules/layout_builder/tests/src/Functional/LayoutBuilderTranslationTest.php
++++ b/core/modules/layout_builder/tests/src/Functional/LayoutBuilderTranslationTest.php
+@@ -4,17 +4,22 @@
+ 
+ namespace Drupal\Tests\layout_builder\Functional;
+ 
++use Drupal\field\Entity\FieldConfig;
++use Drupal\field\Entity\FieldStorageConfig;
++use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
+ use Drupal\Tests\content_translation\Functional\ContentTranslationTestBase;
+ use Drupal\Core\Entity\Entity\EntityViewDisplay;
+ use Drupal\Core\Url;
+ 
+ /**
+- * Tests that the Layout Builder works with translated content.
++ * Tests that the Layout Builder UI works with translated content.
+  *
+  * @group layout_builder
+  */
+ class LayoutBuilderTranslationTest extends ContentTranslationTestBase {
+ 
++  use TranslationTestTrait;
++
+   /**
+    * {@inheritdoc}
+    */
+@@ -49,32 +54,57 @@ protected function setUp(): void {
+   }
+ 
+   /**
+-   * Tests that layout overrides work when created after a translation.
++   * Tests that the Layout Builder UI works with translated content.
+    */
+-  public function testTranslationBeforeLayoutOverride(): void {
++  public function testLayoutPerTranslation(): void {
+     $assert_session = $this->assertSession();
++    $page = $this->getSession()->getPage();
+ 
+-    $this->addEntityTranslation();
+-
+-    $entity_url = $this->entity->toUrl()->toString();
++    $entity_url = $this->entity->toUrl('canonical')->toString();
+     $language = \Drupal::languageManager()->getLanguage($this->langcodes[2]);
+     $translated_entity_url = $this->entity->toUrl('canonical', ['language' => $language])->toString();
++    $layout_url = $entity_url . '/layout';
+     $translated_layout_url = $translated_entity_url . '/layout';
+ 
+     $this->drupalGet($entity_url);
+     $assert_session->pageTextNotContains('The translated field value');
+     $assert_session->pageTextContains('The untranslated field value');
+-    $assert_session->linkExists('Layout');
+ 
+     $this->drupalGet($translated_entity_url);
+     $assert_session->pageTextNotContains('The untranslated field value');
+     $assert_session->pageTextContains('The translated field value');
+-    $assert_session->linkNotExists('Layout');
+ 
++    $this->drupalGet($layout_url);
++    $assert_session->pageTextNotContains('The translated field value');
++    $assert_session->pageTextContains('The untranslated field value');
++
++    // If there is not a layout override the layout translation is not
++    // accessible.
++    $this->drupalGet($translated_layout_url);
++    $assert_session->pageTextContains('Access denied');
++
++    // Ensure that the tempstore varies per-translation.
++    $this->drupalGet($layout_url);
++    $assert_session->pageTextNotContains('The translated field value');
++    $assert_session->pageTextContains('The untranslated field value');
++
++    // Adjust the layout of the original entity.
++    $assert_session->linkExists('Add block');
++    $this->clickLink('Add block');
++    $assert_session->linkExists('Powered by Drupal');
++    $this->clickLink('Powered by Drupal');
++    $page->pressButton('Add block');
++
++    $assert_session->pageTextContains('Powered by Drupal');
++
++    // Confirm the tempstore for the translated layout is not affected.
+     $this->drupalGet($translated_layout_url);
+     $assert_session->pageTextContains('Access denied');
+ 
+-    $this->addLayoutOverride();
++    $this->drupalGet($layout_url);
++    $assert_session->pageTextContains('Powered by Drupal');
++    $assert_session->buttonExists('Save layout');
++    $page->pressButton('Save layout');
+ 
+     $this->drupalGet($entity_url);
+     $assert_session->pageTextNotContains('The translated field value');
+@@ -86,43 +116,121 @@ public function testTranslationBeforeLayoutOverride(): void {
+     $assert_session->pageTextNotContains('The untranslated field value');
+     $assert_session->pageTextContains('The translated field value');
+     $assert_session->pageTextContains('Powered by Drupal');
++
++    // Confirm that layout translation page is accessible once the untranslated
++    // entity has a override.
++    $this->drupalGet($translated_layout_url);
++    $assert_session->pageTextNotContains('Access denied');
++    $assert_session->pageTextNotContains('The untranslated field value');
++    $assert_session->pageTextContains('The translated field value');
++    $assert_session->pageTextContains('Powered by Drupal');
++    $assert_session->buttonExists('Save layout');
++
++    $this->assertNonTranslationActionsRemoved();
++
+   }
+ 
+   /**
+-   * Tests that layout overrides work when created before a translation.
++   * Tests that access is denied to a layout translation if there is override.
+    */
+-  public function testLayoutOverrideBeforeTranslation(): void {
++  public function testLayoutTranslationNoOverride(): void {
+     $assert_session = $this->assertSession();
+ 
+-    $entity_url = $this->entity->toUrl()->toString();
++    $entity_url = $this->entity->toUrl('canonical')->toString();
+     $language = \Drupal::languageManager()->getLanguage($this->langcodes[2]);
+ 
+-    $this->addLayoutOverride();
++    $translated_entity_url = $this->entity->toUrl('canonical', ['language' => $language])->toString();
++    $translated_layout_url = $translated_entity_url . '/layout';
+ 
+     $this->drupalGet($entity_url);
+     $assert_session->pageTextNotContains('The translated field value');
+     $assert_session->pageTextContains('The untranslated field value');
+-    $assert_session->pageTextContains('Powered by Drupal');
+-    $assert_session->linkExists('Layout');
++    $this->drupalGet($translated_entity_url);
++    $assert_session->pageTextNotContains('The untranslated field value');
++    $assert_session->pageTextContains('The translated field value');
++
++    // If there is not a layout override the layout translation is not
++    // accessible.
++    $this->drupalGet($translated_layout_url);
++    $assert_session->pageTextContains('Access denied');
++  }
+ 
+-    $this->addEntityTranslation();
++  /**
++   * Tests access to layout translation if the layout field is translatable.
++   */
++  public function testTranslatableLayoutField() {
++    $assert_session = $this->assertSession();
++    $page = $this->getSession()->getPage();
++
++    $field_storage = FieldStorageConfig::loadByName('entity_test_mul', OverridesSectionStorage::FIELD_NAME);
++    $this->assertNotEmpty($field_storage);
++    $field_storage->setTranslatable(TRUE);
++    $this->assertNotEmpty($field_storage->save());
++    $field_config = FieldConfig::loadByName('entity_test_mul', 'entity_test_mul', OverridesSectionStorage::FIELD_NAME);
++    $this->assertNotEmpty($field_config);
++    $field_config->setTranslatable(TRUE);
++    $this->assertNotEmpty($field_config->save());
++
++    $entity_url = $this->entity->toUrl('canonical')->toString();
++    $layout_url = $entity_url . '/layout';
++    $language = \Drupal::languageManager()->getLanguage($this->langcodes[2]);
+     $translated_entity_url = $this->entity->toUrl('canonical', ['language' => $language])->toString();
+     $translated_layout_url = $translated_entity_url . '/layout';
+ 
+     $this->drupalGet($entity_url);
+     $assert_session->pageTextNotContains('The translated field value');
+     $assert_session->pageTextContains('The untranslated field value');
+-    $assert_session->pageTextContains('Powered by Drupal');
+-    $assert_session->linkExists('Layout');
+ 
+     $this->drupalGet($translated_entity_url);
+     $assert_session->pageTextNotContains('The untranslated field value');
+     $assert_session->pageTextContains('The translated field value');
++
++    // If there is not a layout override the layout translation is not
++    // accessible.
++    $this->drupalGet($translated_layout_url);
++    $assert_session->pageTextContains('Access denied');
++
++    // Ensure that the tempstore varies per-translation.
++    $this->drupalGet($layout_url);
++    $assert_session->pageTextNotContains('The translated field value');
++    $assert_session->pageTextContains('The untranslated field value');
++
++    // Adjust the layout of the original entity.
++    $assert_session->linkExists('Add block');
++    $this->clickLink('Add block');
++    $assert_session->linkExists('Powered by Drupal');
++    $this->clickLink('Powered by Drupal');
++    $page->pressButton('Add block');
++
+     $assert_session->pageTextContains('Powered by Drupal');
+-    $assert_session->linkNotExists('Layout');
+ 
++    // Confirm the tempstore for the translated layout is not affected.
+     $this->drupalGet($translated_layout_url);
+     $assert_session->pageTextContains('Access denied');
++
++    $this->drupalGet($layout_url);
++    $assert_session->pageTextContains('Powered by Drupal');
++    $assert_session->buttonExists('Save layout');
++    $page->pressButton('Save layout');
++
++    $this->drupalGet($entity_url);
++    $assert_session->pageTextContains('Powered by Drupal');
++
++    // Confirm the translation layout is still not allowed.
++    $this->drupalGet($translated_layout_url);
++
++    $assert_session->pageTextContains('Access denied');
++
++    // Update the layout field to be not translatable.
++    $field_config = FieldConfig::loadByName('entity_test_mul', 'entity_test_mul', OverridesSectionStorage::FIELD_NAME);
++    $this->assertNotEmpty($field_config);
++    $field_config->setTranslatable(FALSE);
++    $this->assertNotEmpty($field_config->save());
++
++    // Confirm the translation layout is still not allowed.
++    $this->drupalGet($translated_layout_url);
++    $assert_session->pageTextNotContains('Access denied');
++    $assert_session->buttonExists('Save layout');
+   }
+ 
+   /**
+@@ -155,6 +263,16 @@ protected function setUpEntities() {
+       ->getStorage($this->entityTypeId);
+     $storage->resetCache([$id]);
+     $this->entity = $storage->load($id);
++
++    // Create a translation.
++    $this->drupalLogin($this->translator);
++    $add_translation_url = Url::fromRoute("entity.$this->entityTypeId.content_translation_add", [
++      $this->entityTypeId => $this->entity->id(),
++      'source' => $this->langcodes[0],
++      'target' => $this->langcodes[2],
++    ]);
++    $this->drupalGet($add_translation_url);
++    $this->submitForm(["{$this->fieldName}[0][value]" => 'The translated field value'], 'Save');
+   }
+ 
+   /**
+@@ -173,44 +291,4 @@ protected function setUpViewDisplay() {
+       ->save();
+   }
+ 
+-  /**
+-   * Adds an entity translation.
+-   */
+-  protected function addEntityTranslation() {
+-    $user = $this->loggedInUser;
+-    $this->drupalLogin($this->translator);
+-    $add_translation_url = Url::fromRoute("entity.$this->entityTypeId.content_translation_add", [
+-      $this->entityTypeId => $this->entity->id(),
+-      'source' => $this->langcodes[0],
+-      'target' => $this->langcodes[2],
+-    ]);
+-    $this->drupalGet($add_translation_url);
+-    $this->submitForm(["{$this->fieldName}[0][value]" => 'The translated field value'], 'Save');
+-    $this->drupalLogin($user);
+-  }
+-
+-  /**
+-   * Adds a layout override.
+-   */
+-  protected function addLayoutOverride() {
+-    $assert_session = $this->assertSession();
+-    $page = $this->getSession()->getPage();
+-    $entity_url = $this->entity->toUrl()->toString();
+-    $layout_url = $entity_url . '/layout';
+-    $this->drupalGet($layout_url);
+-    $assert_session->pageTextNotContains('The translated field value');
+-    $assert_session->pageTextContains('The untranslated field value');
+-
+-    // Adjust the layout.
+-    $assert_session->linkExists('Add block');
+-    $this->clickLink('Add block');
+-    $assert_session->linkExists('Powered by Drupal');
+-    $this->clickLink('Powered by Drupal');
+-    $page->pressButton('Add block');
+-
+-    $assert_session->pageTextContains('Powered by Drupal');
+-    $assert_session->buttonExists('Save layout');
+-    $page->pressButton('Save layout');
+-  }
+-
+ }
+diff --git a/core/modules/layout_builder/tests/src/Functional/Rest/LayoutBuilderEntityViewDisplayResourceTestBase.php b/core/modules/layout_builder/tests/src/Functional/Rest/LayoutBuilderEntityViewDisplayResourceTestBase.php
+index 3e536d649ac7bdb11bfa6c63d5f6a317b3b4c01d..be0a0090af59176e7077ffe0eb3e8a076f4267c3 100644
+--- a/core/modules/layout_builder/tests/src/Functional/Rest/LayoutBuilderEntityViewDisplayResourceTestBase.php
++++ b/core/modules/layout_builder/tests/src/Functional/Rest/LayoutBuilderEntityViewDisplayResourceTestBase.php
+@@ -38,6 +38,7 @@ protected function getExpectedNormalizedEntity() {
+     $expected = parent::getExpectedNormalizedEntity();
+     array_unshift($expected['dependencies']['module'], 'layout_builder');
+     $expected['hidden'][OverridesSectionStorage::FIELD_NAME] = TRUE;
++    $expected['hidden'][OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME] = TRUE;
+     $expected['third_party_settings']['layout_builder'] = [
+       'enabled' => TRUE,
+       'allow_custom' => TRUE,
+diff --git a/core/modules/layout_builder/tests/src/Functional/TranslationTestTrait.php b/core/modules/layout_builder/tests/src/Functional/TranslationTestTrait.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..3efaee49f3cd3b058283bce2e7186843dd7a6058
+--- /dev/null
++++ b/core/modules/layout_builder/tests/src/Functional/TranslationTestTrait.php
+@@ -0,0 +1,24 @@
++<?php
++
++namespace Drupal\Tests\layout_builder\Functional;
++
++/**
++ * Common functions for testing Layout Builder with translations.
++ */
++trait TranslationTestTrait {
++
++  /**
++   * Asserts that non-trans actions have been removed.
++   */
++  protected function assertNonTranslationActionsRemoved() {
++    /** @var \Drupal\Tests\WebAssert $assert_session */
++    $assert_session = $this->assertSession();
++    // Confirm that links do not exist to change the layout.
++    $assert_session->linkNotExists('Add Section');
++    $assert_session->linkNotExists('Add block');
++    $assert_session->linkNotExists('Remove section');
++    $assert_session->elementNotExists('css', '[data-contextual-id^="layout_builder_block:"]');
++    $assert_session->buttonNotExists('Revert to defaults');
++  }
++
++}
+diff --git a/core/modules/layout_builder/tests/src/Functional/Update/Translatability/MakeLayoutUntranslatableUpdatePathTestBase.php b/core/modules/layout_builder/tests/src/Functional/Update/Translatability/MakeLayoutUntranslatableUpdatePathTestBase.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..4ccea61706791ccae550e02b9f1e46a148f08597
+--- /dev/null
++++ b/core/modules/layout_builder/tests/src/Functional/Update/Translatability/MakeLayoutUntranslatableUpdatePathTestBase.php
+@@ -0,0 +1,85 @@
++<?php
++
++namespace Drupal\Tests\layout_builder\Functional\Update\Translatability;
++
++use Drupal\field\Entity\FieldConfig;
++use Drupal\field\Entity\FieldStorageConfig;
++use Drupal\FunctionalTests\Update\UpdatePathTestBase;
++use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
++
++/**
++ * Base class for upgrade path for translatable layouts.
++ *
++ * Each class that extends this class will test 1 case for including 2 content
++ * types.
++ *
++ * This method of testing is used instead of a data provider method because test
++ * fixtures do not have access to the provide data. This allows varying fixture
++ * data per test case.
++ *
++ * @see layout_builder_post_update_make_layout_untranslatable()
++ */
++abstract class MakeLayoutUntranslatableUpdatePathTestBase extends UpdatePathTestBase {
++
++  /**
++   * Layout builder test cases.
++   *
++   * Keys are bundle names. Values are test cases including keys:
++   *   - has_translation
++   *   - has_layout
++   *   - vid
++   *   - nid
++   *
++   * @var array
++   */
++  protected $layoutBuilderTestCases;
++
++  /**
++   * Expectations of field updates by bundles.
++   *
++   * @var array
++   */
++  protected $expectedBundleUpdates;
++
++  /**
++   * Whether the field storage should be updated.
++   *
++   * @var bool
++   */
++  protected $expectedFieldStorageUpdate;
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setDatabaseDumpFiles() {
++    $this->databaseDumpFiles = [
++      __DIR__ . '/../../../../../../system/tests/fixtures/update/drupal-8.filled.standard.php.gz',
++      __DIR__ . '/../../../../fixtures/update/layout-builder.php',
++      __DIR__ . '/../../../../fixtures/update/layout-builder-field-schema.php',
++      __DIR__ . '/../../../../fixtures/update/layout-builder-translation.php',
++    ];
++  }
++
++  /**
++   * Tests the upgrade path for translatable layouts.
++   *
++   * @see layout_builder_post_update_make_layout_untranslatable()
++   */
++  public function testDisableTranslationOnLayouts() {
++    $this->runUpdates();
++    foreach ($this->expectedBundleUpdates as $bundle => $field_update_expected) {
++      $this->assertEquals(
++        $field_update_expected,
++        !FieldConfig::loadByName('node', $bundle, OverridesSectionStorage::FIELD_NAME)->isTranslatable(),
++        $field_update_expected ? "Field on $bundle set to be non-translatable." : "Field on $bundle not set to non-translatable."
++      );
++      $this->assertNotEmpty(FieldConfig::loadByName('node', $bundle, OverridesSectionStorage::TRANSLATED_CONFIGURATION_FIELD_NAME), "Translation field for $bundle was created");
++    }
++
++    $this->assertEquals(
++      $this->expectedFieldStorageUpdate,
++      !FieldStorageConfig::loadByName('node', OverridesSectionStorage::FIELD_NAME)->isTranslatable()
++    );
++  }
++
++}
+diff --git a/core/modules/layout_builder/tests/src/FunctionalJavascript/InlineBlockTranslationTest.php b/core/modules/layout_builder/tests/src/FunctionalJavascript/InlineBlockTranslationTest.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..02d030dcf750e5d88537d3a1cbb57569c7e2add9
+--- /dev/null
++++ b/core/modules/layout_builder/tests/src/FunctionalJavascript/InlineBlockTranslationTest.php
+@@ -0,0 +1,243 @@
++<?php
++
++namespace Drupal\Tests\layout_builder\FunctionalJavascript;
++
++use Drupal\language\Entity\ConfigurableLanguage;
++use Drupal\Core\Url;
++use Drupal\Tests\layout_builder\Functional\TranslationTestTrait;
++
++/**
++ * Tests that inline blocks works with content translation.
++ *
++ * @group layout_builder
++ */
++class InlineBlockTranslationTest extends InlineBlockTestBase {
++
++  use LayoutBuilderTestTrait;
++  use TranslationTestTrait;
++  use JavascriptTranslationTestTrait;
++
++  /**
++   * {@inheritdoc}
++   */
++  protected static $modules = [
++    'content_translation',
++  ];
++
++  /**
++   * {@inheritdoc}
++   */
++  protected $defaultTheme = 'classy';
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setUp(): void {
++    parent::setUp();
++
++    // Adds a new language.
++    ConfigurableLanguage::createFromLangcode('it')->save();
++
++    // Enable translation for the node type 'bundle_with_section_field'.
++    \Drupal::service('content_translation.manager')->setEnabled('node', 'bundle_with_section_field', TRUE);
++  }
++
++  /**
++   * Tests that inline blocks works with content translation.
++   */
++  public function testInlineBlockContentTranslation() {
++    $assert_session = $this->assertSession();
++
++    $this->drupalLogin($this->drupalCreateUser([
++      'access contextual links',
++      'configure any layout',
++      'administer node display',
++      'administer node fields',
++      'translate bundle_with_section_field node',
++      'create content translations',
++      'create and edit custom blocks',
++    ]));
++
++    // Allow layout overrides.
++    $this->drupalGet(static::FIELD_UI_PREFIX . '/display/default');
++    $this->submitForm(['layout[enabled]' => TRUE],
++      'Save'
++    );
++    $this->drupalGet(static::FIELD_UI_PREFIX . '/display/default');
++    $this->submitForm(['layout[allow_custom]' => TRUE],
++      'Save'
++    );
++
++    // Add a new inline block to the original node.
++    $this->drupalGet('node/1/layout');
++    $this->addInlineBlockToLayout('Block en label', 'Block en body');
++    $this->assertSaveLayout();
++    $this->drupalGet('node/1');
++    $assert_session->pageTextContains('Block en label');
++    $assert_session->pageTextContains('Block en body');
++    $block_id = $this->getLatestBlockEntityId();
++
++    // Create a translation.
++    $add_translation_url = Url::fromRoute("entity.node.content_translation_add", [
++      'node' => 1,
++      'source' => 'en',
++      'target' => 'it',
++    ]);
++    $this->drupalGet($add_translation_url);
++    $this->submitForm([
++      'title[0][value]' => 'The translated node title',
++      'body[0][value]' => 'The translated node body',
++    ], 'Save');
++
++    // Update the translate node's inline block.
++    $this->drupalGet('it/node/1/layout');
++    $this->assertNonTranslationActionsRemoved();
++
++    $this->updateBlockTranslation(
++      static::INLINE_BLOCK_LOCATOR,
++      'Block en label',
++      'Block it label',
++      '',
++      ['[name="settings[block_form][body][0][value]"]']
++    );
++
++    $this->assertSaveLayout();
++    $this->assertEquals($block_id, $this->getLatestBlockEntityId(), 'A new block was not created.');
++    $this->blockStorage->resetCache([$block_id]);
++    /** @var \Drupal\block_content\BlockContentInterface $block */
++    $block = $this->blockStorage->load($block_id);
++    $this->assertFalse($block->hasTranslation('it'), 'A block translation was not created when only the label was translatable.');
++
++    // Enable translation for block_content type 'bundle_with_section_field'.
++    \Drupal::service('content_translation.manager')->setEnabled('block_content', 'basic', TRUE);
++
++    // Update the translate node's inline block.
++    $this->drupalGet('it/node/1/layout');
++    $this->assertNonTranslationActionsRemoved();
++    $this->updateTranslatedBlock('Block it label', 'Block en body', 'Block updated it label', 'Block it body');
++
++    $this->assertEquals($block_id, $this->getLatestBlockEntityId(), 'A new block was not created.');
++    $this->blockStorage->resetCache([$block_id]);
++    /** @var \Drupal\block_content\BlockContentInterface $block */
++    $block = $this->blockStorage->load($block_id);
++    $this->assertFalse($block->hasTranslation('it'), 'A block translation was not created before the layout was saved.');
++
++    $this->assertSaveLayout();
++    $this->assertEquals($block_id, $this->getLatestBlockEntityId(), 'A new block was not created');
++    $this->blockStorage->resetCache([$block_id]);
++    /** @var \Drupal\block_content\BlockContentInterface $block */
++    $block = $this->blockStorage->load($block_id);
++    $this->assertTrue($block->hasTranslation('it'), 'A block translation was created when the layout was saved.');
++    $block_translation = $block->getTranslation('it');
++    $this->assertEquals('Block it body', $block_translation->get('body')->get(0)->getValue()['value'], 'The translated block body field was created correctly.');
++
++    $assert_session->addressEquals('it/node/1');
++    $assert_session->pageTextContains('Block it body');
++    $assert_session->pageTextContains('Block updated it label');
++    $assert_session->pageTextNotContains('Block en body');
++    $assert_session->pageTextNotContains('Block en label');
++
++    // Confirm that the default translation was not effected.
++    $this->drupalGet('node/1');
++    $assert_session->pageTextNotContains('Block it body');
++    $assert_session->pageTextNotContains('Block updated it label');
++    $assert_session->pageTextContains('Block en body');
++    $assert_session->pageTextContains('Block en label');
++
++    // Update the translation inline block again.
++    $this->drupalGet('it/node/1/layout');
++    $this->updateTranslatedBlock('Block updated it label', 'Block it body', 'Block newer updated it label', 'Block updated it body');
++    $this->assertSaveLayout();
++
++    $this->assertEquals($block_id, $this->getLatestBlockEntityId(), 'A new block was not created.');
++    $this->blockStorage->resetCache([$block_id]);
++    $block = $this->blockStorage->load($block_id);
++    $block_translation = $block->getTranslation('it');
++    $this->assertEquals('Block updated it body', $block_translation->get('body')->get(0)->getValue()['value'], 'The translated block body field was created correctly.');
++
++    $assert_session->addressEquals('it/node/1');
++    $assert_session->pageTextContains('Block updated it body');
++    $assert_session->pageTextContains('Block newer updated it label');
++    $assert_session->pageTextNotContains('Block en body');
++    $assert_session->pageTextNotContains('Block en label');
++
++    // Confirm that the default translation was not effected.
++    $this->drupalGet('node/1');
++    $assert_session->pageTextNotContains('Block updated it body');
++    $assert_session->pageTextNotContains('Block newer updated it label');
++    $assert_session->pageTextContains('Block en body');
++    $assert_session->pageTextContains('Block en label');
++
++    // Update the default translation's version of the block.
++    $this->drupalGet('node/1/layout');
++    $this->configureInlineBlock('Block en body', 'Block updated en body');
++    $this->assertSaveLayout();
++
++    $assert_session->addressEquals('node/1');
++    $assert_session->pageTextNotContains('Block updated it body');
++    $assert_session->pageTextNotContains('Block newer updated it label');
++    $assert_session->pageTextContains('Block updated en body');
++    $assert_session->pageTextContains('Block en label');
++
++    // Confirm that the translation was not effected.
++    $this->drupalGet('it/node/1');
++    $assert_session->pageTextContains('Block updated it body');
++    $assert_session->pageTextContains('Block newer updated it label');
++    $assert_session->pageTextNotContains('Block updated en body');
++    $assert_session->pageTextNotContains('Block en label');
++
++    // Update the translation block after updating default translation block.
++    $this->drupalGet('it/node/1/layout');
++    $this->updateTranslatedBlock('Block newer updated it label', 'Block updated it body', 'Block even newer updated it label', 'Block newer updated it body');
++    $this->assertSaveLayout();
++
++    $assert_session->addressEquals('it/node/1');
++    $assert_session->pageTextContains('Block newer updated it body');
++    $assert_session->pageTextContains('Block even newer updated it label');
++    $assert_session->pageTextNotContains('Block updated en body');
++    $assert_session->pageTextNotContains('Block en label');
++
++    $this->drupalGet('node/1');
++    $assert_session->pageTextNotContains('Block newer updated it body');
++    $assert_session->pageTextNotContains('Block even newer updated it label');
++    $assert_session->pageTextContains('Block updated en body');
++    $assert_session->pageTextContains('Block en label');
++  }
++
++  /**
++   * Update a translation inline block.
++   *
++   * @param string $existing_label
++   *   The inline block's existing label.
++   * @param string $existing_body
++   *   The inline block's existing body field value.
++   * @param string $new_label
++   *   The new label.
++   * @param string $new_body
++   *   The new body field value.
++   */
++  protected function updateTranslatedBlock($existing_label, $existing_body, $new_label, $new_body) {
++    $assert_session = $this->assertSession();
++    $page = $this->getSession()->getPage();
++    $this->clickContextualLink(static::INLINE_BLOCK_LOCATOR, 'Translate block');
++    $textarea = $assert_session->waitForElement('css', '[name="body[0][value]"]');
++    $this->assertNotEmpty($textarea);
++    $this->assertEquals($existing_body, $textarea->getValue());
++    $textarea->setValue($new_body);
++
++    $label_input = $assert_session->elementExists('css', '#drupal-off-canvas [name="info[0][value]"]');
++    $this->assertNotEmpty($label_input);
++    $this->assertEquals($existing_label, $label_input->getValue());
++    $label_input->setValue($new_label);
++    $page->pressButton('Save');
++
++    $this->assertNoElementAfterWait('#drupal-off-canvas');
++    $assert_session->assertWaitOnAjaxRequest();
++
++    $assert_session->pageTextContains($new_label);
++    $assert_session->pageTextContains($new_body);
++    $assert_session->pageTextNotContains($existing_label);
++    $assert_session->pageTextNotContains($existing_body);
++  }
++
++}
+diff --git a/core/modules/layout_builder/tests/src/FunctionalJavascript/JavascriptTranslationTestTrait.php b/core/modules/layout_builder/tests/src/FunctionalJavascript/JavascriptTranslationTestTrait.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..83a5d1de84b2e8d81cfd8b212ce0a0f466bb0090
+--- /dev/null
++++ b/core/modules/layout_builder/tests/src/FunctionalJavascript/JavascriptTranslationTestTrait.php
+@@ -0,0 +1,52 @@
++<?php
++
++namespace Drupal\Tests\layout_builder\FunctionalJavascript;
++
++/**
++ * Common functions for testing Layout Builder with translations.
++ */
++trait JavascriptTranslationTestTrait {
++
++  /**
++   * Whether the test is using config_translation.
++   *
++   * @var bool
++   */
++  protected $usingConfigTranslation = FALSE;
++
++  /**
++   * Updates a block label translation.
++   *
++   * @param string $block_selector
++   *   The CSS selector for the block.
++   * @param string $untranslated_label
++   *   The label untranslated.
++   * @param string $new_label
++   *   The new label to set.
++   * @param string $expected_label
++   *   The expected existing translated label.
++   * @param array $unexpected_element_selectors
++   *   A list of selectors for elements that should be present.
++   */
++  protected function updateBlockTranslation($block_selector, $untranslated_label, $new_label, $expected_label = '', array $unexpected_element_selectors = []) {
++    /** @var \Drupal\Tests\WebAssert $assert_session */
++    $assert_session = $this->assertSession();
++    /** @var \Behat\Mink\Element\DocumentElement $page */
++    $page = $this->getSession()->getPage();
++
++    $translation_selector_prefix = $this->usingConfigTranslation ? '#drupal-off-canvas .translation-set ' : '#drupal-off-canvas ';
++    $this->clickContextualLink($block_selector, 'Translate block');
++    $label_input = $assert_session->waitForElementVisible('css', $translation_selector_prefix . '[name="translation[label]"]');
++    $this->assertNotEmpty($label_input);
++    $this->assertEquals($expected_label, $label_input->getValue());
++    $assert_session->elementTextContains('css', $translation_selector_prefix . '.form-item-source-label', $untranslated_label);
++    $label_input->setValue($new_label);
++    foreach ($unexpected_element_selectors as $unexpected_element_selector) {
++      $assert_session->elementNotExists('css', $unexpected_element_selector);
++    }
++    $page->pressButton('Translate');
++    $this->assertNoElementAfterWait('#drupal-off-canvas');
++    $this->assertNotEmpty($assert_session->waitForElementVisible('css', "h2:contains(\"$new_label\")"));
++  }
++
++}
+diff --git a/core/modules/layout_builder/tests/src/FunctionalJavascript/LayoutBuilderTestTrait.php b/core/modules/layout_builder/tests/src/FunctionalJavascript/LayoutBuilderTestTrait.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..237d9ebfeeba9176084ba735aced185175cef180
+--- /dev/null
++++ b/core/modules/layout_builder/tests/src/FunctionalJavascript/LayoutBuilderTestTrait.php
+@@ -0,0 +1,72 @@
++<?php
++
++namespace Drupal\Tests\layout_builder\FunctionalJavascript;
++
++/**
++ * Common functions for testing Layout Builder.
++ */
++trait LayoutBuilderTestTrait {
++
++  /**
++   * Adds a block in the Layout Builder.
++   *
++   * @param string $block_link_text
++   *   The link text to add the block.
++   * @param string $rendered_locator
++   *   The CSS locator to confirm the block was rendered.
++   * @param bool $label_display
++   *   Whether the label should be displayed.
++   * @param string|null $label
++   *   The label use.
++   */
++  protected function addBlock($block_link_text, $rendered_locator, $label_display = FALSE, $label = NULL) {
++    $assert_session = $this->assertSession();
++    $page = $this->getSession()->getPage();
++
++    // Add a new block.
++    $this->assertNotEmpty($assert_session->waitForElementVisible('css', '#layout-builder a:contains(\'Add block\')'));
++    $this->clickLink('Add block');
++    $this->assertNotEmpty($assert_session->waitForElementVisible('css', '#drupal-off-canvas'));
++    $assert_session->assertWaitOnAjaxRequest();
++
++    $assert_session->linkExists($block_link_text);
++    $this->clickLink($block_link_text);
++
++    // Wait for off-canvas dialog to reopen with block form.
++    $this->assertNotEmpty($assert_session->waitForElementVisible('css', ".layout-builder-add-block"));
++    $assert_session->assertWaitOnAjaxRequest();
++    if ($label_display) {
++      $page->checkField('settings[label_display]');
++    }
++    if ($label !== NULL) {
++      $page->fillField('settings[label]', $label);
++    }
++    $page->pressButton('Add block');
++
++    // Wait for block form to be rendered in the Layout Builder.
++    $this->assertNotEmpty($assert_session->waitForElement('css', $rendered_locator));
++  }
++
++  /**
++   * Waits for an element to be removed from the page.
++   *
++   * @param string $selector
++   *   CSS selector.
++   * @param int $timeout
++   *   (optional) Timeout in milliseconds, defaults to 10000.
++   * @param string $message
++   *   (optional) Custom message to display with the assertion.
++   *
++   * @todo: Remove after https://www.drupal.org/project/drupal/issues/2892440
++   */
++  public function assertNoElementAfterWait($selector, $timeout = 10000, $message = '') {
++    $page = $this->getSession()->getPage();
++    if ($message === '') {
++      $message = "Element '$selector' was not on the page after wait.";
++    }
++    $this->assertTrue($page->waitFor($timeout / 1000, function () use ($page, $selector) {
++      return empty($page->find('css', $selector));
++    }), $message);
++  }
++
++}
+diff --git a/core/modules/layout_builder/tests/src/FunctionalJavascript/ModeratedTranslationTest.php b/core/modules/layout_builder/tests/src/FunctionalJavascript/ModeratedTranslationTest.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..e920a3a722bb61b9b101560a6f35e842f661c3d8
+--- /dev/null
++++ b/core/modules/layout_builder/tests/src/FunctionalJavascript/ModeratedTranslationTest.php
+@@ -0,0 +1,250 @@
++<?php
++
++namespace Drupal\Tests\layout_builder\FunctionalJavascript;
++
++use Drupal\Core\Url;
++use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
++use Drupal\language\Entity\ConfigurableLanguage;
++use Drupal\node\Entity\Node;
++use Drupal\Tests\content_moderation\Traits\ContentModerationTestTrait;
++use Drupal\Tests\contextual\FunctionalJavascript\ContextualLinkClickTrait;
++use Drupal\Tests\layout_builder\Functional\TranslationTestTrait;
++
++/**
++ * Test moderated and translated layout overrides.
++ *
++ * @group layout_builder
++ */
++class ModeratedTranslationTest extends WebDriverTestBase {
++
++  use LayoutBuilderTestTrait;
++  use TranslationTestTrait;
++  use JavascriptTranslationTestTrait;
++  use ContextualLinkClickTrait;
++  use ContentModerationTestTrait;
++
++  /**
++   * Path prefix for the field UI for the test bundle.
++   */
++  const FIELD_UI_PREFIX = 'admin/structure/types/manage/bundle_with_section_field';
++
++  /**
++   * {@inheritdoc}
++   */
++  protected static $modules = [
++    'content_translation',
++    'content_moderation',
++    'layout_builder',
++    'block',
++    'node',
++    'contextual',
++    'layout_builder_test',
++    'block_test',
++  ];
++
++  /**
++   * {@inheritdoc}
++   */
++  protected $defaultTheme = 'classy';
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setUp(): void {
++    parent::setUp();
++    $page = $this->getSession()->getPage();
++    $this->container->get('state')->set('test_block_access', TRUE);
++
++    // @todo The Layout Builder UI relies on local tasks; fix in
++    //   https://www.drupal.org/project/drupal/issues/2917777.
++    $this->drupalPlaceBlock('local_tasks_block');
++
++    $this->createContentType(['type' => 'bundle_with_section_field', 'new_revision' => TRUE]);
++    $workflow = $this->createEditorialWorkflow();
++    $workflow->getTypePlugin()->addEntityTypeAndBundle('node', 'bundle_with_section_field');
++    $workflow->save();
++
++    // Adds a new language.
++    ConfigurableLanguage::createFromLangcode('it')->save();
++
++    // Enable translation for the node type 'bundle_with_section_field'.
++    \Drupal::service('content_translation.manager')->setEnabled('node', 'bundle_with_section_field', TRUE);
++
++    $this->drupalLogin($this->drupalCreateUser([
++      'access contextual links',
++      'configure any layout',
++      'administer node display',
++      'administer node fields',
++      'translate bundle_with_section_field node',
++      'create content translations',
++      'edit any bundle_with_section_field content',
++      'view bundle_with_section_field revisions',
++      'revert bundle_with_section_field revisions',
++      'view own unpublished content',
++      'view latest version',
++      'use editorial transition create_new_draft',
++      'use editorial transition publish',
++    ]));
++
++    $node = $this->createNode([
++      'type' => 'bundle_with_section_field',
++      'title' => 'The node title',
++      'body' => [
++        [
++          'value' => 'The node body',
++        ],
++      ],
++    ]);
++
++    $this->drupalGet('node/1');
++
++    // Create a translation.
++    $add_translation_url = Url::fromRoute("entity.node.content_translation_add", [
++      'node' => 1,
++      'source' => 'en',
++      'target' => 'it',
++    ]);
++    $this->drupalGet($add_translation_url);
++    $this->submitForm([
++      'title[0][value]' => 'The translated node title',
++      'body[0][value]' => 'The translated node body',
++    ], 'Save');
++
++    // Allow layout overrides.
++    $this->drupalGet(static::FIELD_UI_PREFIX . '/display/default');
++    $this->submitForm(
++      ['layout[enabled]' => TRUE],
++      'Save'
++    );
++    $this->drupalGet(static::FIELD_UI_PREFIX . '/display/default');
++    $this->submitForm(
++      ['layout[allow_custom]' => TRUE],
++      'Save'
++    );
++
++    // Publish both nodes.
++    $this->drupalGet($node->toUrl());
++    $page->fillField('new_state', 'published');
++    $page->pressButton('Apply');
++
++    // Modify the layout.
++    $this->drupalGet('it/node/1');
++    $page->fillField('new_state', 'published');
++    $page->pressButton('Apply');
++  }
++
++  /**
++   * Tests a layout overrides that are moderated and translated.
++   */
++  public function testModerationTranslatedOverrides() {
++    $assert_session = $this->assertSession();
++    $page = $this->getSession()->getPage();
++
++    $node = Node::load(1);
++
++    // Create a draft layout override.
++    $this->drupalGet($node->toUrl());
++    $page->clickLink('Layout');
++    $assert_session->checkboxChecked('revision');
++    $assert_session->fieldDisabled('revision');
++
++    $this->addBlock('Powered by Drupal', '.block-system-powered-by-block', TRUE, 'untranslated label');
++    $page->fillField('moderation_state[0][state]', 'draft');
++    $page->pressButton('Save layout');
++
++    // Modify the layout.
++    $this->drupalGet('it/node/1');
++    // Layout link does not exist for translation because published default
++    // translation has no override.
++    $assert_session->elementNotExists('css', '[data-drupal-link-system-path="node/1/layout"]');
++
++    // Publish the override.
++    $this->drupalGet($node->toUrl());
++    $page->clickLink('Layout');
++    $page->fillField('moderation_state[0][state]', 'published');
++    $page->pressButton('Save layout');
++
++    $assert_session->addressEquals('node/1');
++    $assert_session->pageTextContains('untranslated label');
++
++    $this->drupalGet('it/node/1');
++    // Layout link exists for the translation after publish default translation
++    // has an override.
++    $assert_session->elementExists('css', '[data-drupal-link-system-path="node/1/layout"]');
++    $page->clickLink('Layout');
++
++    $assert_session->checkboxChecked('revision');
++    $assert_session->fieldDisabled('revision');
++    $assert_session->pageTextContains('untranslated label');
++    $this->assertNonTranslationActionsRemoved();
++    $this->updateBlockTranslation('.block-system-powered-by-block', 'untranslated label', 'label in translation');
++    $page->fillField('moderation_state[0][state]', 'draft');
++    $page->pressButton('Save layout');
++
++    // The translate draft label is not show in any publish revision yet.
++    $this->drupalGet($node->toUrl());
++    $assert_session->pageTextContains('untranslated label');
++    $assert_session->pageTextNotContains('label in translation');
++    $page->clickLink('Layout');
++    $assert_session->pageTextContains('untranslated label');
++    $assert_session->pageTextNotContains('label in translation');
++
++    $this->drupalGet('it/node/1');
++    $assert_session->pageTextContains('untranslated label');
++    $assert_session->pageTextNotContains('label in translation');
++
++    $page->clickLink('Latest version');
++    $assert_session->pageTextContains('label in translation');
++
++    // Add a new block to the default translation override.
++    $this->drupalGet($node->toUrl());
++    $page->clickLink('Layout');
++    $this->addBlock('Test block access', '#layout-builder .block-test-access', TRUE, 'untranslated new label');
++    $page->fillField('moderation_state[0][state]', 'draft');
++    $page->pressButton('Save layout');
++
++    $this->drupalGet('it/node/1');
++    $this->clickLink('Layout');
++    $assert_session->pageTextContains('label in translation');
++    $assert_session->pageTextNotContains('untranslated new label');
++
++    // Publish draft default translation with new block.
++    $this->drupalGet($node->toUrl());
++    $page->clickLink('Layout');
++    $page->fillField('moderation_state[0][state]', 'published');
++    $page->pressButton('Save layout');
++    $assert_session->addressEquals('node/1');
++    $assert_session->pageTextContains('untranslated new label');
++
++    $this->drupalGet('it/node/1');
++    // New block in published default translation exists in published
++    // translation.
++    $assert_session->pageTextContains('untranslated new label');
++    $page->clickLink('Latest version');
++    // New block in published default translation does not exist in existing
++    // draft.
++    $assert_session->pageTextNotContains('untranslated new label');
++    $this->clickLink('Layout');
++    $assert_session->pageTextContains('label in translation');
++    // New block in published default translation does not exist in existing
++    // draft.
++    $assert_session->pageTextNotContains('untranslated new label');
++    $page->fillField('moderation_state[0][state]', 'published');
++    $page->pressButton('Save layout');
++
++    $assert_session->addressEquals('it/node/1');
++    $assert_session->pageTextContains('label in translation');
++
++    $assert_session->pageTextNotContains('untranslated label');
++    $assert_session->pageTextContains('untranslated new label');
++
++    // The default translation still uses the untranslated label.
++    $this->drupalGet('node/1');
++    $assert_session->pageTextContains('untranslated label');
++    $assert_session->pageTextNotContains('label in translation');
++    $page->clickLink('Layout');
++    $assert_session->pageTextContains('untranslated label');
++    $assert_session->pageTextNotContains('label in translation');
++  }
++
++}
+diff --git a/core/modules/layout_builder/tests/src/FunctionalJavascript/TranslationTest.php b/core/modules/layout_builder/tests/src/FunctionalJavascript/TranslationTest.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..5978e1aa17f2b79d700b069b19e59bb427acfb0a
+--- /dev/null
++++ b/core/modules/layout_builder/tests/src/FunctionalJavascript/TranslationTest.php
+@@ -0,0 +1,176 @@
++<?php
++
++namespace Drupal\Tests\layout_builder\FunctionalJavascript;
++
++use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
++use Drupal\language\Entity\ConfigurableLanguage;
++use Drupal\Core\Url;
++use Drupal\Tests\contextual\FunctionalJavascript\ContextualLinkClickTrait;
++use Drupal\Tests\layout_builder\Functional\TranslationTestTrait;
++
++/**
++ * Tests that block settings can be translated.
++ *
++ * @group layout_builder
++ */
++class TranslationTest extends WebDriverTestBase {
++
++  use LayoutBuilderTestTrait;
++  use TranslationTestTrait;
++  use JavascriptTranslationTestTrait;
++  use ContextualLinkClickTrait;
++
++  /**
++   * Path prefix for the field UI for the test bundle.
++   */
++  const FIELD_UI_PREFIX = 'admin/structure/types/manage/bundle_with_section_field';
++
++  /**
++   * {@inheritdoc}
++   */
++  protected static $modules = [
++    'content_translation',
++    'layout_builder',
++    'block',
++    'node',
++    'contextual',
++  ];
++
++  /**
++   * {@inheritdoc}
++   */
++  protected $defaultTheme = 'classy';
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setUp(): void {
++    parent::setUp();
++    // @todo The Layout Builder UI relies on local tasks; fix in
++    //   https://www.drupal.org/project/drupal/issues/2917777.
++    $this->drupalPlaceBlock('local_tasks_block');
++
++    $this->createContentType(['type' => 'bundle_with_section_field', 'new_revision' => TRUE]);
++    $this->createNode([
++      'type' => 'bundle_with_section_field',
++      'title' => 'The node title',
++      'body' => [
++        [
++          'value' => 'The node body',
++        ],
++      ],
++    ]);
++    // Adds a new language.
++    ConfigurableLanguage::createFromLangcode('it')->save();
++
++    // Enable translation for the node type 'bundle_with_section_field'.
++    \Drupal::service('content_translation.manager')->setEnabled('node', 'bundle_with_section_field', TRUE);
++
++    $this->drupalLogin($this->drupalCreateUser([
++      'access contextual links',
++      'configure any layout',
++      'administer node display',
++      'administer node fields',
++      'translate bundle_with_section_field node',
++      'create content translations',
++    ]));
++
++    // Create a translation.
++    $add_translation_url = Url::fromRoute("entity.node.content_translation_add", [
++      'node' => 1,
++      'source' => 'en',
++      'target' => 'it',
++    ]);
++    $this->drupalGet($add_translation_url);
++    $this->submitForm([
++      'title[0][value]' => 'The translated node title',
++      'body[0][value]' => 'The translated node body',
++    ], 'Save');
++
++    // Allow layout overrides.
++    $this->drupalGet(static::FIELD_UI_PREFIX . '/display/default');
++    $this->submitForm(['layout[enabled]' => TRUE],
++      'Save'
++    );
++    $this->drupalGet(static::FIELD_UI_PREFIX . '/display/default');
++    $this->submitForm(['layout[allow_custom]' => TRUE],
++      'Save'
++    );
++  }
++
++  /**
++   * DataProvider for testLabelTranslation().
++   */
++  public function providerLabelTranslation() {
++    return [
++      'with config_translation' => [TRUE],
++      'without config_translation' => [FALSE],
++    ];
++  }
++
++  /**
++   * Tests that block labels can be translated.
++   *
++   * @dataProvider providerLabelTranslation
++   */
++  public function testLabelTranslation($install_config_translation) {
++    $page = $this->getSession()->getPage();
++    $assert_session = $this->assertSession();
++
++    $this->usingConfigTranslation = $install_config_translation;
++    if ($install_config_translation) {
++      $this->container->get('module_installer')->install(['config_translation']);
++    }
++
++    $this->drupalLogin($this->drupalCreateUser([
++      'access contextual links',
++      'configure any layout',
++      // @todo should you need this permission? You don't actually save the
++      //   entity translation because labels are stored with untranslated
++      //   layout.
++      //   'translate bundle_with_section_field node'.
++    ]));
++
++    // Add a new inline block to the original node.
++    $this->drupalGet('node/1/layout');
++
++    $this->clickContextualLink('.block-field-blocknodebundle-with-section-fieldbody', 'Configure');
++    $this->assertNotEmpty($assert_session->waitForElementVisible('css', '#drupal-off-canvas'));
++    $page->fillField('settings[label]', 'field label untranslated');
++    $page->checkField('settings[label_display]');
++    $page->pressButton('Update');
++    $assert_session->assertWaitOnAjaxRequest();
++    $this->assertNoElementAfterWait('#drupal-off-canvas');
++    $this->addBlock('Powered by Drupal', '.block-system-powered-by-block', TRUE, 'untranslated label');
++    $assert_session->pageTextContains('untranslated label');
++    $assert_session->buttonExists('Save layout');
++    $page->pressButton('Save layout');
++    $assert_session->addressEquals('node/1');
++
++    // Update the translations block label.
++    $this->drupalGet('it/node/1/layout');
++    $this->assertNonTranslationActionsRemoved();
++    $this->updateBlockTranslation('.block-system-powered-by-block', 'untranslated label', 'label in translation');
++    $assert_session->buttonExists('Save layout');
++    $page->pressButton('Save layout');
++    $assert_session->addressEquals('it/node/1');
++    $assert_session->pageTextContains('label in translation');
++    $assert_session->pageTextNotContains('untranslated label');
++
++    // Confirm that untranslated label is still used on default translation.
++    $this->drupalGet('node/1');
++    $assert_session->pageTextContains('untranslated label');
++    $assert_session->pageTextNotContains('label in translation');
++
++    // Update the translations block label.
++    $this->drupalGet('it/node/1/layout');
++    $this->assertNonTranslationActionsRemoved();
++    $this->updateBlockTranslation('.block-system-powered-by-block', 'untranslated label', 'label updated in translation', 'label in translation');
++    $assert_session->buttonExists('Save layout');
++    $page->pressButton('Save layout');
++    $assert_session->addressEquals('it/node/1');
++    $assert_session->pageTextContains('label updated in translation');
++    $assert_session->pageTextNotContains('label in translation');
++  }
++
++}
+diff --git a/core/modules/layout_builder/tests/src/Kernel/DefaultsSectionStorageTest.php b/core/modules/layout_builder/tests/src/Kernel/DefaultsSectionStorageTest.php
+index 00055e4080b0d3dc1edb3fbe0f631f06ffd62f7d..773a69377714e563f66ecfc5fcd22887f1c9dd88 100644
+--- a/core/modules/layout_builder/tests/src/Kernel/DefaultsSectionStorageTest.php
++++ b/core/modules/layout_builder/tests/src/Kernel/DefaultsSectionStorageTest.php
+@@ -117,7 +117,7 @@ public static function providerTestAccess() {
+         'layout_onecol',
+         [],
+         [
+-          '10000000-0000-1000-a000-000000000000' => new SectionComponent('10000000-0000-1000-a000-000000000000', 'content', ['id' => 'foo'], ['harold' => 'maude']),
++          '10000000-0000-1000-a000-000000000000' => new SectionComponent('10000000-0000-1000-a000-000000000000', 'content', ['id' => 'foo'], [], ['layout_builder_defaults_test' => ['harold' => 'maude']]),
+         ],
+         ['layout_builder_defaults_test' => ['which_party' => 'third']]
+       ),
+diff --git a/core/modules/layout_builder/tests/src/Kernel/OverridesSectionStorageTest.php b/core/modules/layout_builder/tests/src/Kernel/OverridesSectionStorageTest.php
+index d8d773134dc5f5743be5731daa3137bc61638b58..096aa486d6524657c4f68bc0869442fb7e8b87e3 100644
+--- a/core/modules/layout_builder/tests/src/Kernel/OverridesSectionStorageTest.php
++++ b/core/modules/layout_builder/tests/src/Kernel/OverridesSectionStorageTest.php
+@@ -8,6 +8,7 @@
+ use Drupal\Core\Plugin\Context\ContextDefinition;
+ use Drupal\Core\Plugin\Context\EntityContext;
+ use Drupal\entity_test\Entity\EntityTest;
++use Drupal\entity_test\Entity\EntityTestMul;
+ use Drupal\KernelTests\KernelTestBase;
+ use Drupal\language\Entity\ConfigurableLanguage;
+ use Drupal\layout_builder\DefaultsSectionStorageInterface;
+@@ -38,6 +39,8 @@ class OverridesSectionStorageTest extends KernelTestBase {
+     'system',
+     'user',
+     'language',
++    'content_translation',
++    'content_translation_test',
+   ];
+ 
+   /**
+@@ -55,6 +58,8 @@ protected function setUp(): void {
+ 
+     $this->setUpCurrentUser();
+     $this->installEntitySchema('entity_test');
++    $this->installEntitySchema('entity_test_mul');
++    $this->installEntitySchema('user');
+ 
+     $definition = $this->container->get('plugin.manager.layout_builder.section_storage')->getDefinition('overrides');
+     $this->plugin = OverridesSectionStorage::create($this->container, [], 'overrides', $definition);
+@@ -74,9 +79,10 @@ protected function setUp(): void {
+    *   An array of permissions to grant to the user.
+    */
+   public function testAccess($expected, $is_enabled, array $section_data, array $permissions): void {
++    ConfigurableLanguage::createFromLangcode('es')->save();
+     $display = LayoutBuilderEntityViewDisplay::create([
+-      'targetEntityType' => 'entity_test',
+-      'bundle' => 'entity_test',
++      'targetEntityType' => 'entity_test_mul',
++      'bundle' => 'entity_test_mul',
+       'mode' => 'default',
+       'status' => TRUE,
+     ]);
+@@ -87,7 +93,7 @@ public function testAccess($expected, $is_enabled, array $section_data, array $p
+       ->setOverridable()
+       ->save();
+ 
+-    $entity = EntityTest::create([OverridesSectionStorage::FIELD_NAME => $section_data]);
++    $entity = EntityTestMul::create([OverridesSectionStorage::FIELD_NAME => $section_data]);
+     $entity->save();
+ 
+     $account = $this->setUpCurrentUser([], $permissions);
+@@ -102,18 +108,17 @@ public function testAccess($expected, $is_enabled, array $section_data, array $p
+     $this->assertSame($expected, $result);
+ 
+     // Create a translation.
+-    ConfigurableLanguage::createFromLangcode('es')->save();
+-    $entity = EntityTest::load($entity->id());
+     $translation = $entity->addTranslation('es');
+     $translation->save();
+     $this->plugin->setContext('entity', EntityContext::fromEntity($translation));
++    // Translation access should only be allowed when there is section data.
++    $translation_expected_access = $expected && !empty($section_data);
+ 
+-    // Perform the same checks again but with a non default translation which
+-    // should always deny access.
++    // Perform the same checks again but with a non default translation.
+     $result = $this->plugin->access('view');
+-    $this->assertFalse($result);
++    $this->assertSame($translation_expected_access, $result);
+     $result = $this->plugin->access('view', $account);
+-    $this->assertFalse($result);
++    $this->assertSame($translation_expected_access, $result);
+   }
+ 
+   /**
+@@ -151,22 +156,22 @@ public static function providerTestAccess() {
+       TRUE, TRUE, $section_data, ['configure any layout'],
+     ];
+     $data['enabled, no data, bundle overrides'] = [
+-      TRUE, TRUE, [], ['configure all entity_test entity_test layout overrides'],
++      TRUE, TRUE, [], ['configure all entity_test_mul entity_test_mul layout overrides'],
+     ];
+     $data['enabled, data, bundle overrides'] = [
+-      TRUE, TRUE, $section_data, ['configure all entity_test entity_test layout overrides'],
++      TRUE, TRUE, $section_data, ['configure all entity_test_mul entity_test_mul layout overrides'],
+     ];
+     $data['enabled, no data, bundle edit overrides, no edit access'] = [
+-      FALSE, TRUE, [], ['configure editable entity_test entity_test layout overrides'],
++      FALSE, TRUE, [], ['configure editable entity_test_mul entity_test_mul layout overrides'],
+     ];
+     $data['enabled, data, bundle edit overrides, no edit access'] = [
+-      FALSE, TRUE, $section_data, ['configure editable entity_test entity_test layout overrides'],
++      FALSE, TRUE, $section_data, ['configure editable entity_test_mul entity_test_mul layout overrides'],
+     ];
+     $data['enabled, no data, bundle edit overrides, edit access'] = [
+-      TRUE, TRUE, [], ['configure editable entity_test entity_test layout overrides', 'administer entity_test content'],
++      TRUE, TRUE, [], ['configure editable entity_test_mul entity_test_mul layout overrides', 'administer entity_test content'],
+     ];
+     $data['enabled, data, bundle edit overrides, edit access'] = [
+-      TRUE, TRUE, $section_data, ['configure editable entity_test entity_test layout overrides', 'administer entity_test content'],
++      TRUE, TRUE, $section_data, ['configure editable entity_test_mul entity_test_mul layout overrides', 'administer entity_test content'],
+     ];
+     return $data;
+   }
+diff --git a/core/modules/layout_builder/tests/src/Unit/OverridesSectionStorageTest.php b/core/modules/layout_builder/tests/src/Unit/OverridesSectionStorageTest.php
+index 8b05201660a1c9db51f41ee4505e4786484fffb3..9acfaa672d24064d85af5445ba883667a0468b05 100644
+--- a/core/modules/layout_builder/tests/src/Unit/OverridesSectionStorageTest.php
++++ b/core/modules/layout_builder/tests/src/Unit/OverridesSectionStorageTest.php
+@@ -139,6 +139,18 @@ public static function providerTestExtractEntityFromRoute() {
+       'my_entity_type.entity_without_layout',
+       [],
+     ];
++    $data['with value, with layout, fr'] = [
++      TRUE,
++      'my_entity_type',
++      'my_entity_type.entity_with_layout.fr',
++      [],
++    ];
++    $data['with value, without layout, fr'] = [
++      FALSE,
++      'my_entity_type',
++      'my_entity_type.entity_without_layout.fr',
++      [],
++    ];
+     $data['empty value, populated defaults'] = [
+       TRUE,
+       'my_entity_type',
+@@ -148,6 +160,18 @@ public static function providerTestExtractEntityFromRoute() {
+         'my_entity_type' => 'entity_with_layout',
+       ],
+     ];
++    $data['with value, with layout, fr'] = [
++      TRUE,
++      'my_entity_type',
++      'my_entity_type.entity_with_layout.fr',
++      [],
++    ];
++    $data['with value, without layout, fr'] = [
++      FALSE,
++      'my_entity_type',
++      'my_entity_type.entity_without_layout.fr',
++      [],
++    ];
+     $data['empty value, empty defaults'] = [
+       FALSE,
+       NULL,
+diff --git a/core/modules/layout_builder/tests/src/Unit/SectionComponentTest.php b/core/modules/layout_builder/tests/src/Unit/SectionComponentTest.php
+index 0561034479ec6705f7a1d58be4edb14b59edce84..cb99525091657b97bb774f56829275a6e638ef8b 100644
+--- a/core/modules/layout_builder/tests/src/Unit/SectionComponentTest.php
++++ b/core/modules/layout_builder/tests/src/Unit/SectionComponentTest.php
+@@ -11,6 +11,7 @@
+ use Drupal\Core\Layout\LayoutPluginManagerInterface;
+ use Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent;
+ use Drupal\layout_builder\LayoutBuilderEvents;
++use Drupal\layout_builder\Section;
+ use Drupal\layout_builder\SectionComponent;
+ use Drupal\Tests\UnitTestCase;
+ use Prophecy\Argument;
+@@ -22,6 +23,38 @@
+  */
+ class SectionComponentTest extends UnitTestCase {
+ 
++  /**
++   * The section object to test.
++   *
++   * @var \Drupal\layout_builder\Section
++   */
++  protected $section;
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setUp(): void {
++    parent::setUp();
++
++    $component = new SectionComponent(
++      'some-uuid',
++      'some-region',
++      ['id' => 'existing-block-id'],
++      [],
++      [
++        'Initech' => [
++          'Bill Lumbergh' => 'TPS reports',
++          'Milton Waddams' => 'Red Stapler',
++        ],
++        'Chotchkies' => [
++          'flair' => TRUE,
++        ],
++      ]
++    );
++
++    $this->section = new Section('layout_onecol', [], [$component]);
++  }
++
+   /**
+    * @covers ::toRenderArray
+    */
+@@ -70,4 +103,227 @@ public function testToRenderArray(): void {
+     $this->assertEquals($expected, $result);
+   }
+ 
++  /**
++   * @covers ::getThirdPartySettings
++   * @dataProvider providerTestGetThirdPartySettings
++   */
++  public function testGetThirdPartySettings($provider, $expected): void {
++    $this->assertSame($expected, $this->section->getComponent('some-uuid')->getThirdPartySettings($provider));
++  }
++
++  /**
++   * Provides test data for ::testGetThirdPartySettings().
++   *
++   * @return array
++   *   Third party settings.
++   */
++  public function providerTestGetThirdPartySettings(): array {
++    $data = [];
++    $data['Initech third party settings'] = [
++      'Initech',
++      [
++        'Bill Lumbergh' => 'TPS reports',
++        'Milton Waddams' => 'Red Stapler',
++      ],
++    ];
++    $data['Chotchkies third party settings'] = [
++      'Chotchkies',
++      ['flair' => TRUE],
++    ];
++    $data['Nonexisting provider'] = [
++      'non_existing_provider',
++      [],
++    ];
++    return $data;
++  }
++
++  /**
++   * @covers ::getThirdPartySetting
++   * @dataProvider providerTestGetThirdPartySetting
++   */
++  public function testGetThirdPartySetting($provider, $key, $expected, $default = FALSE): void {
++    if ($default) {
++      $this->assertSame($expected, $this->section->getComponent('some-uuid')->getThirdPartySetting($provider, $key, $default));
++      return;
++    }
++    $this->assertSame($expected, $this->section->getComponent('some-uuid')->getThirdPartySetting($provider, $key));
++  }
++
++  /**
++   * Provides test data for ::testGetThirdPartySetting().
++   *
++   * @return array
++   *   Third party settings.
++   */
++  public function providerTestGetThirdPartySetting(): array {
++    $data = [];
++    $data['Initech third party setting for "Bill Lumbergh" key'] = [
++      'Initech',
++      'Bill Lumbergh',
++      'TPS reports',
++    ];
++    $data['Chotchkies third party setting for "flair" key'] = [
++      'Chotchkies',
++      'flair',
++      TRUE,
++    ];
++    $data['Chotchkies third party setting for nonexisting key'] = [
++      'Chotchkies',
++      'non_existing_key',
++      NULL,
++    ];
++    $data['Nonexisting provider third party setting for nonexisting key'] = [
++      'non_existing_provider',
++      'non_existing_key',
++      NULL,
++    ];
++    $data['Nonexisting provider third party setting for nonexisting key with a default value provided'] = [
++      'non_existing_provider',
++      'non_existing_key',
++      'default value',
++      'default value',
++    ];
++    return $data;
++  }
++
++  /**
++   * @covers ::setThirdPartySetting
++   * @dataProvider providerTestSetThirdPartySetting
++   */
++  public function testSetThirdPartySetting($provider, $key, $value, $expected): void {
++    $this->section->getComponent('some-uuid')->setThirdPartySetting($provider, $key, $value);
++    $this->assertSame($expected, $this->section->getComponent('some-uuid')->getThirdPartySettings($provider));
++  }
++
++  /**
++   * Provides test data for ::testSetThirdPartySettings().
++   *
++   * @return array
++   *   Third party settings.
++   */
++  public function providerTestSetThirdPartySetting(): array {
++    $data = [];
++    $data['Override "Milton Waddams" third party setting for Initech provider'] = [
++      'Initech',
++      'Milton Waddams',
++      'Storage B',
++      [
++        'Bill Lumbergh' => 'TPS reports',
++        'Milton Waddams' => 'Storage B',
++      ],
++    ];
++    $data['Add "Peter Gibbons" third party setting for Initech provider'] = [
++      'Initech',
++      'Peter Gibbons',
++      'Programmer',
++      [
++        'Bill Lumbergh' => 'TPS reports',
++        'Milton Waddams' => 'Red Stapler',
++        'Peter Gibbons' => 'Programmer',
++      ],
++    ];
++    $data['Add "Medical Providers" provider third party settings'] = [
++      'Medical Providers',
++      'Dr. Swanson',
++      'Hypnotist',
++      [
++        'Dr. Swanson' => 'Hypnotist',
++      ],
++    ];
++    return $data;
++  }
++
++  /**
++   * @covers ::unsetThirdPartySetting
++   * @dataProvider providerTestUnsetThirdPartySetting
++   */
++  public function testUnsetThirdPartySetting($provider, $key, $expected): void {
++    $this->section->getComponent('some-uuid')->unsetThirdPartySetting($provider, $key);
++    $this->assertSame($expected, $this->section->getComponent('some-uuid')->getThirdPartySettings($provider));
++  }
++
++  /**
++   * Provides test data for ::testUnsetThirdPartySetting().
++   *
++   * @return array
++   *   Third party settings.
++   */
++  public function providerTestUnsetThirdPartySetting(): array {
++    $data = [];
++    $data['Key with values'] = [
++      'Initech',
++      'Bill Lumbergh',
++      [
++        'Milton Waddams' => 'Red Stapler',
++      ],
++    ];
++    $data['Key without values'] = [
++      'Chotchkies',
++      'flair',
++      [],
++    ];
++    $data['Non-existing key'] = [
++      'Chotchkies',
++      'non_existing_key',
++      [
++        'flair' => TRUE,
++      ],
++    ];
++    $data['Non-existing provider'] = [
++      'non_existing_provider',
++      'non_existing_key',
++      [],
++    ];
++    return $data;
++  }
++
++  /**
++   * @covers ::getThirdPartyProviders
++   */
++  public function testGetThirdPartyProviders(): void {
++    $this->assertSame(['Initech', 'Chotchkies'], $this->section->getComponent('some-uuid')->getThirdPartyProviders());
++    $this->section->getComponent('some-uuid')->unsetThirdPartySetting('Chotchkies', 'flair');
++    $this->assertSame(['Initech'], $this->section->getComponent('some-uuid')->getThirdPartyProviders());
++  }
++
++  /**
++   * Tests that deprecation notices are triggered.
++   *
++   * @group legacy
++   *
++   * @todo Remove below test when the drupal:10.1.x branch is opened.
++   * @see https://www.drupal.org/project/drupal/issues/3160644
++   */
++  public function testDeprecationNotices(): void {
++    $this->expectDeprecation('Setting random section component properties is deprecated in drupal:10.2.0 and is removed from drupal:11.0.0. Component properties should be set via dedicated setters. See https://www.drupal.org/node/3100177');
++    $this->expectDeprecation('Getting additional properties is deprecated in drupal:10.2.0 and is removed from drupal:11.0.0. Additional component properties should be gotten via ::getThirdPartySetting(). See https://www.drupal.org/node/3100177');
++
++    // Instantiate SectionComponent with additional settings is deprecated.
++    new SectionComponent(
++      'some-uuid',
++      'some-region',
++      [],
++      // Provide deprecated 'additional' argument.
++      [
++        'spoiler-alert' => [
++          'glitch-in-accounting' => 'fixed',
++          'building-arson' => 'probably',
++          'milton-on-beach' => TRUE,
++        ],
++      ],
++      [],
++    );
++
++    // Instantiate SectionComponent object with preferred create() method.
++    $component = new SectionComponent(
++      'some-uuid',
++      'some-region',
++      [],
++      [],
++    );
++    // Call deprecated set() and get() methods.
++    $component->set('music', 'very 90s');
++    $component->get('music');
++  }
++
+ }
+diff --git a/core/modules/system/tests/fixtures/HtaccessTest/access_test.module.orig b/core/modules/system/tests/fixtures/HtaccessTest/access_test.module.orig
+deleted file mode 100644
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
+diff --git a/core/modules/system/tests/fixtures/HtaccessTest/access_test.php.orig b/core/modules/system/tests/fixtures/HtaccessTest/access_test.php.orig
+deleted file mode 100644
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
+diff --git a/core/profiles/demo_umami/config/install/core.entity_view_display.node.article.full.yml b/core/profiles/demo_umami/config/install/core.entity_view_display.node.article.full.yml
+index ab8d49faceb15621720925c5f75eca41c6473fea..49fde4f2b33fbc74db802acdaf92605c6af77d08 100644
+--- a/core/profiles/demo_umami/config/install/core.entity_view_display.node.article.full.yml
++++ b/core/profiles/demo_umami/config/install/core.entity_view_display.node.article.full.yml
+@@ -39,6 +39,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+           02d32417-145b-41a4-8d7a-27e4477b9666:
+             uuid: 02d32417-145b-41a4-8d7a-27e4477b9666
+             region: content
+@@ -56,6 +57,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 1
+             additional: {  }
++            third_party_settings: {  }
+           f73af85e-15fc-4672-8b72-3ed91353e08c:
+             uuid: f73af85e-15fc-4672-8b72-3ed91353e08c
+             region: content
+@@ -71,6 +73,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 2
+             additional: {  }
++            third_party_settings: {  }
+           957850fc-d5ea-4a6f-b3c9-dd2e4811a5c4:
+             uuid: 957850fc-d5ea-4a6f-b3c9-dd2e4811a5c4
+             region: content
+@@ -81,6 +84,7 @@ third_party_settings:
+                 entity: layout_builder.entity
+             weight: 3
+             additional: {  }
++            third_party_settings: {  }
+           937c9738-b63e-409f-897a-c9fc98f6716e:
+             uuid: 937c9738-b63e-409f-897a-c9fc98f6716e
+             region: content
+@@ -91,6 +95,7 @@ third_party_settings:
+                 entity: layout_builder.entity
+             weight: 4
+             additional: {  }
++            third_party_settings: {  }
+         third_party_settings: {  }
+ id: node.article.full
+ targetEntityType: node
+diff --git a/core/profiles/demo_umami/config/install/core.entity_view_display.node.page.full.yml b/core/profiles/demo_umami/config/install/core.entity_view_display.node.page.full.yml
+index a1f918afdac083a1099120ca98e4991c727094ba..d4444009fb51d795b13241f28cc35da10794097b 100644
+--- a/core/profiles/demo_umami/config/install/core.entity_view_display.node.page.full.yml
++++ b/core/profiles/demo_umami/config/install/core.entity_view_display.node.page.full.yml
+@@ -36,6 +36,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+           57ad7b26-a88b-439e-a056-40f2de29a943:
+             uuid: 57ad7b26-a88b-439e-a056-40f2de29a943
+             region: content
+@@ -46,6 +47,7 @@ third_party_settings:
+                 entity: layout_builder.entity
+             weight: 1
+             additional: {  }
++            third_party_settings: {  }
+           01b94e28-e38c-4849-98d6-ed77bca30afc:
+             uuid: 01b94e28-e38c-4849-98d6-ed77bca30afc
+             region: content
+@@ -56,6 +58,7 @@ third_party_settings:
+                 entity: layout_builder.entity
+             weight: 2
+             additional: {  }
++            third_party_settings: {  }
+         third_party_settings: {  }
+ id: node.page.full
+ targetEntityType: node
+diff --git a/core/profiles/demo_umami/config/install/core.entity_view_display.node.recipe.full.yml b/core/profiles/demo_umami/config/install/core.entity_view_display.node.recipe.full.yml
+index 6eb48804da838599fe67d394ce0b901cc3a71291..99e26506106798c0dc1ed0043431db9731bcf0fa 100644
+--- a/core/profiles/demo_umami/config/install/core.entity_view_display.node.recipe.full.yml
++++ b/core/profiles/demo_umami/config/install/core.entity_view_display.node.recipe.full.yml
+@@ -51,6 +51,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 3
+             additional: {  }
++            third_party_settings: {  }
+           0eff9e1d-4e73-4748-b910-e5568df1d5aa:
+             uuid: 0eff9e1d-4e73-4748-b910-e5568df1d5aa
+             region: content
+@@ -67,6 +68,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 2
+             additional: {  }
++            third_party_settings: {  }
+           44801518-fe93-421a-bdcb-550493c7925d:
+             uuid: 44801518-fe93-421a-bdcb-550493c7925d
+             region: content
+@@ -82,6 +84,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 4
+             additional: {  }
++            third_party_settings: {  }
+         third_party_settings: {  }
+       -
+         layout_id: layout_oneplusfourgrid_section
+@@ -107,6 +110,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 4
+             additional: {  }
++            third_party_settings: {  }
+           df8bfafc-210c-4d86-9745-e47081ab0fd4:
+             uuid: df8bfafc-210c-4d86-9745-e47081ab0fd4
+             region: fifth
+@@ -122,6 +126,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+           a2d450d0-08ce-4123-bca0-411bfa1da132:
+             uuid: a2d450d0-08ce-4123-bca0-411bfa1da132
+             region: fourth
+@@ -139,6 +144,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+           f91febc6-d924-47a2-8ffd-b71d3b2597c7:
+             uuid: f91febc6-d924-47a2-8ffd-b71d3b2597c7
+             region: third
+@@ -156,6 +162,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+           00488840-db50-4afe-9c30-a123e6707fa9:
+             uuid: 00488840-db50-4afe-9c30-a123e6707fa9
+             region: second
+@@ -173,6 +180,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+           69d8bce1-28ae-4287-a05b-a2166679f867:
+             uuid: 69d8bce1-28ae-4287-a05b-a2166679f867
+             region: first
+@@ -192,6 +200,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+         third_party_settings: {  }
+       -
+         layout_id: layout_twocol_section
+@@ -215,6 +224,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+           f61cae40-5865-4c4c-98fa-14b8234e7b98:
+             uuid: f61cae40-5865-4c4c-98fa-14b8234e7b98
+             region: second
+@@ -230,6 +240,7 @@ third_party_settings:
+                 third_party_settings: {  }
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+         third_party_settings: {  }
+       -
+         layout_id: layout_onecol
+@@ -266,6 +277,7 @@ third_party_settings:
+               items_per_page: none
+             weight: 0
+             additional: {  }
++            third_party_settings: {  }
+         third_party_settings: {  }
+ id: node.recipe.full
+ targetEntityType: node

@@ -1,0 +1,15 @@
+{% embed 'rocketship_theme_starter:cb-focus' with {
+  attributes,
+  classes: [ ],
+  component: derivative_plugin_id|clean_class|trim('cb-', 'left'),
+  title: content.field_cb_title|render,
+  subtitle: content.field_cb_subtitle|render,
+  teaser: content.field_cb_teaser|render,
+  content: content|without(
+    'field_cb_title',
+    'field_cb_subtitle',
+    'field_cb_teaser',
+  ),
+  title_suffix: title_suffix,
+} %}
+{% endembed %}

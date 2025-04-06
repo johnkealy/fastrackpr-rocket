@@ -1,0 +1,133 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - block_content.type.cb_testimonial
+    - field.field.block_content.cb_testimonial.field_cb_boxed
+    - field.field.block_content.cb_testimonial.field_cb_extra_rule
+    - field.field.block_content.cb_testimonial.field_cb_link
+    - field.field.block_content.cb_testimonial.field_cb_media
+    - field.field.block_content.cb_testimonial.field_cb_name
+    - field.field.block_content.cb_testimonial.field_cb_text
+  module:
+    - field_group
+    - link
+    - smart_trim
+    - text
+third_party_settings:
+  field_group:
+    group_content:
+      children:
+        - field_cb_media
+        - field_cb_text
+        - group_info
+        - field_cb_link
+      label: Content
+      parent_name: ''
+      region: content
+      weight: 0
+      format_type: html_element
+      format_settings:
+        classes: 'cb-content cb-testimonial-content'
+        id: ''
+        element: div
+        show_label: false
+        label_element: h3
+        label_element_classes: ''
+        attributes: ''
+        effect: none
+        speed: fast
+    group_info:
+      children:
+        - field_cb_name
+        - field_cb_extra_rule
+      label: Info
+      parent_name: group_content
+      region: content
+      weight: 3
+      format_type: html_element
+      format_settings:
+        classes: 'cb-info cb-testimonial-info'
+        id: ''
+        element: div
+        show_label: false
+        label_element: h3
+        label_element_classes: ''
+        attributes: ''
+        effect: none
+        speed: fast
+id: block_content.cb_testimonial.default
+targetEntityType: block_content
+bundle: cb_testimonial
+mode: default
+content:
+  field_cb_extra_rule:
+    type: smart_trim
+    label: hidden
+    settings:
+      trim_length: 600
+      trim_type: chars
+      trim_suffix: ''
+      wrap_output: false
+      wrap_class: trimmed
+      more_link: false
+      more_class: more-link
+      more_text: More
+      more_aria_label: 'Read more about [node:title]'
+      summary_handler: full
+      trim_options:
+        text: false
+        trim_zero: false
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_cb_link:
+    type: link
+    label: hidden
+    settings:
+      trim_length: null
+      url_only: false
+      url_plain: false
+      rel: '0'
+      target: '0'
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_cb_media:
+    type: entity_reference_entity_view
+    label: hidden
+    settings:
+      view_mode: drimage_1_1
+      link: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_cb_name:
+    type: smart_trim
+    label: hidden
+    settings:
+      trim_length: 600
+      trim_type: chars
+      trim_suffix: ''
+      wrap_output: false
+      wrap_class: trimmed
+      more_link: false
+      more_class: more-link
+      more_text: More
+      more_aria_label: 'Read more about [node:title]'
+      summary_handler: full
+      trim_options: {  }
+    third_party_settings: {  }
+    weight: 3
+    region: content
+  field_cb_text:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 2
+    region: content
+hidden:
+  field_cb_boxed: true
+  langcode: true
+  search_api_excerpt: true

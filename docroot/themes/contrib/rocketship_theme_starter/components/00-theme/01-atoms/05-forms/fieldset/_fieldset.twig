@@ -1,0 +1,77 @@
+{#
+/**
+ * @file
+ * Theme override for a fieldset element and its children.
+ *
+ * Available variables:
+ * - attributes: HTML attributes for the fieldset element.
+ * - errors: (optional) Any errors for this fieldset element, may not be set.
+ * - required: Boolean indicating whether the fieldeset element is required.
+ * - legend: The legend element containing the following properties:
+ *   - title: Title of the fieldset, intended for use as the text of the legend.
+ *   - attributes: HTML attributes to apply to the legend.
+ * - description: The description element containing the following properties:
+ *   - content: The description content of the fieldset.
+ *   - attributes: HTML attributes to apply to the description container.
+ * - children: The rendered child elements of the fieldset.
+ * - prefix: The content to add before the fieldset children.
+ * - suffix: The content to add after the fieldset children.
+ *
+ * @see template_preprocess_fieldset()
+ */
+#}
+{% set classes = [
+  'form-fieldset',
+  'js-form-item',
+  'form-item',
+  'js-form-wrapper',
+  'form-wrapper',
+] %}
+<fieldset{{ attributes.addClass(classes) }}>
+  {% set legend_classes = [
+    'h2',
+    required ? 'js-form-required',
+    required ? 'form-required',
+  ] %}
+  {# 
+    unfortunately, Twig js doesn't understand the translate filter,
+    so we can't use it for the Styleguide. 
+    Set a normal string for default values. 
+  #}
+  {% set titleRequired = 'Required field'|t %}
+  {% set titleOptional = 'Optional'|t %}
+  <legend{{ legend.attributes.addClass(legend_classes) }}>
+    {{ legend.title }}
+    {% if required is not null and required %}
+      <abbr class="form__label__required" title="{{ titleRequired }}">*</abbr>
+    {% else %}
+      <span class="form__label__not-required" title="{{ titleOptional }}">({{ titleOptional }})</span>
+    {% endif %}
+  </legend>
+  {% if errors %}
+    <div class="fieldset__error-message form-item--error-message">
+      <strong>{{ errors }}</strong>
+    </div>
+  {% endif %}
+  {% if prefix %}
+    <span class="field-prefix field-prefix--fieldset">{{ prefix }}</span>
+  {% endif %}
+  {{ children }}
+  {% if suffix %}
+    <span class="field-suffix field-suffix--fieldset">{{ suffix }}</span>
+  {% endif %}
+  {% if description.content %}
+    {% if tooltip %}
+      <div class="form__element__tooltip" id="{{ element['#id'] ? element['#id'] : element['#name'] }}-tooltip">
+        <button class="form__element__tooltip__button" id="{{ element['#id'] ? element['#id'] : element['#name'] }}-tooltip-button" aria-label="help" aria-expanded="false" aria-describedby="{{ element['#name'] }}-tooltip-message">?</button>
+        <div class="form__element__tooltip__message" id="{{ element['#id'] ? element['#id'] : element['#name'] }}-tooltip-message" role="tooltip">
+          {{- description.content -}}
+        </div>
+      </div>
+    {% else %}
+      <div{{ description.attributes.addClass('description') }}>
+      {{- description.content -}}
+      </div>
+    {% endif %}
+  {% endif %}
+</fieldset>

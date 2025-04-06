@@ -1,0 +1,12 @@
+name: Menu Clickthrough widgets
+type: module
+description: Provides description to menu items and show menu's in a overview.
+core_version_requirement: '^9.4 || ^10'
+package: Custom
+dependencies:
+  - drupal:menu_ui
+
+# Information added by Drupal.org packaging script on 2024-11-27
+version: '6.2.1'
+project: 'rocketship_core'
+datestamp: 1732708115

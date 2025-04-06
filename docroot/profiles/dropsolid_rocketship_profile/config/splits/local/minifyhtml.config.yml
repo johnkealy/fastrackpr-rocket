@@ -1,0 +1,3 @@
+strip_comments: false
+minify: false
+exclude_pages: "/admin\r\n/admin/*\r\n*/layout"

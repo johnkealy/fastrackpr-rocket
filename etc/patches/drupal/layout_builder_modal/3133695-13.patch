@@ -1,0 +1,105 @@
+diff --git a/layout_builder_modal.module b/layout_builder_modal.module
+index 20aecda..5520ddb 100644
+--- a/layout_builder_modal.module
++++ b/layout_builder_modal.module
+@@ -13,18 +13,28 @@ use Drupal\Core\Form\FormStateInterface;
+  * Implements hook_contextual_links_alter().
+  */
+ function layout_builder_modal_contextual_links_alter(array &$links, $group, array $route_parameters) {
+-  if (isset($links['layout_builder_block_update'])) {
+-    $config = \Drupal::config('layout_builder_modal.settings');
++  // Default key.
++  $keys = ['layout_builder_block_update'];
++  $keys[] = 'layout_builder_block';
++  $keys[] = 'layout_builder_block_translate';
++  $keys[] = 'layout_builder_inline_block_translate';
+ 
+-    $links['layout_builder_block_update']['localized_options']['attributes']['data-dialog-type'] = 'dialog';
+-    $links['layout_builder_block_update']['localized_options']['attributes']['data-dialog-options'] = Json::encode([
+-      'width' => $config->get('modal_width'),
+-      'height' => $config->get('modal_height'),
+-      'target' => 'layout-builder-modal',
+-      'autoResize' => $config->get('modal_autoresize'),
+-      'modal' => TRUE,
+-    ]);
+-    unset($links['layout_builder_block_update']['localized_options']['attributes']['data-dialog-renderer']);
++  foreach ($keys as $key) {
++    if (isset($links[$key])) {
++      $config = \Drupal::config('layout_builder_modal.settings');
++
++      $links[$key]['localized_options']['attributes']['data-dialog-type']    = 'dialog';
++      $links[$key]['localized_options']['attributes']['data-dialog-options'] = Json::encode(
++        [
++          'width'      => $config->get('modal_width'),
++          'height'     => $config->get('modal_height'),
++          'target'     => 'layout-builder-modal',
++          'autoResize' => $config->get('modal_autoresize'),
++          'modal'      => TRUE,
++        ]
++      );
++      unset($links[$key]['localized_options']['attributes']['data-dialog-renderer']);
++    }
+   }
+ }
+ 
+@@ -53,7 +63,13 @@ function layout_builder_modal_link_alter(&$variables) {
+ 
+   $route_name = $url->getRouteName();
+ 
+-  if ($route_name !== 'layout_builder.add_block' && $route_name !== 'layout_builder.update_block') {
++  $route_names = [
++    'layout_builder.add_block',
++    'layout_builder.update_block',
++    'layout_builder.translate_inline_block',
++    'layout_builder.translate_block',
++  ];
++  if (!in_array($route_name, $route_names, TRUE)) {
+     return;
+   }
+ 
+@@ -84,11 +100,21 @@ function layout_builder_modal_link_alter(&$variables) {
+  * Implements hook_form_alter().
+  */
+ function layout_builder_modal_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+-  $applicable_forms = [
+-    'layout_builder_add_block',
+-    'layout_builder_update_block',
++  $applicable_forms_regex = [
++    '/^layout_builder_add_block$/',
++    '/^layout_builder_update_block$/',
++    '/layout_builder_translate_form$/',
+   ];
+-  if (in_array($form_id, $applicable_forms)) {
++
++  $applicable = FALSE;
++  foreach($applicable_forms_regex as $regex) {
++    if (preg_match($regex, $form_id)) {
++      $applicable = TRUE;
++      break;
++    }
++  }
++
++  if ($applicable) {
+     $config = \Drupal::config('layout_builder_modal.settings');
+     if ($config->get('theme_display') == 'seven') {
+       $form['#attached']['library'][] = 'layout_builder_modal/seven';
+diff --git a/src/LayoutBuilderModal.php b/src/LayoutBuilderModal.php
+index d629125..695779f 100644
+--- a/src/LayoutBuilderModal.php
++++ b/src/LayoutBuilderModal.php
+@@ -34,7 +34,14 @@ class LayoutBuilderModal implements TrustedCallbackInterface {
+           }
+           foreach ($child_element['layout-builder__section'][$region] as &$section_child_element) {
+             if (isset($section_child_element['#theme']) && $section_child_element['#theme'] === 'block') {
+-              $section_child_element['#contextual_links']['layout_builder_block']['metadata']['layout_builder_modal'] = $hash;
++              // Search for layout_builder array keys.
++              $layout_builder_elements = array_filter(array_keys($section_child_element['#contextual_links']), static function ($key) {
++                return strpos($key, 'layout_builder_') === 0;
++              });
++              if (($layout_builder_element_key = array_shift($layout_builder_elements)) !== NULL) {
++                // Set hash value to first layout builder element.
++                $section_child_element['#contextual_links'][$layout_builder_element_key]['metadata']['layout_builder_modal'] = $hash;
++              }
+             }
+           }
+         }

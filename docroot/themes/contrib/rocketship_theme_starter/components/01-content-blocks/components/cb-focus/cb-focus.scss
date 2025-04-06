@@ -1,0 +1,19 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content Block: focus.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb-focus {
+  text-align: center;
+
+  .field--buttons {
+    justify-content: center;
+  }
+}

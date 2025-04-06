@@ -1,0 +1,17 @@
+{% embed 'rocketship_theme_starter:cb-usp' with {
+  attributes,
+  classes: [ ],
+  component: derivative_plugin_id|clean_class|trim('cb-', 'left'),
+  media: content.field_cb_media,
+  link: {
+    url: image_wrapper_url,
+    title: image_wrapper_url_title,
+    target: image_wrapper_url_target,
+  },
+  content: content|without(
+    'field_cb_media',
+    'field_cb_image_wrapper_link',
+  ),
+  title_suffix: title_suffix,
+} %}
+{% endembed %}

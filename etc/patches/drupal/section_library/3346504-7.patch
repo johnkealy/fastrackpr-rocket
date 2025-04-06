@@ -1,0 +1,26 @@
+diff --git a/src/Form/AddSectionToLibraryForm.php b/src/Form/AddSectionToLibraryForm.php
+index d09c9a60..fd4d8ef3 100644
+--- a/src/Form/AddSectionToLibraryForm.php
++++ b/src/Form/AddSectionToLibraryForm.php
+@@ -107,7 +107,7 @@ public function buildForm(array $form, FormStateInterface $form_state, SectionSt
+     $form['label'] = [
+       '#type' => 'textfield',
+       '#title' => $this->t('Label'),
+-      '#maxlength' => 255,
++      '#maxlength' => 50,
+       '#default_value' => '',
+       '#required' => TRUE,
+     ];
+diff --git a/src/Form/AddTemplateToLibraryForm.php b/src/Form/AddTemplateToLibraryForm.php
+index b188c607..7e15c97a 100644
+--- a/src/Form/AddTemplateToLibraryForm.php
++++ b/src/Form/AddTemplateToLibraryForm.php
+@@ -107,7 +107,7 @@ public function buildForm(array $form, FormStateInterface $form_state, SectionSt
+     $form['label'] = [
+       '#type' => 'textfield',
+       '#title' => $this->t('Label'),
+-      '#maxlength' => 255,
++      '#maxlength' => 50,
+       '#default_value' => '',
+       '#required' => TRUE,
+     ];

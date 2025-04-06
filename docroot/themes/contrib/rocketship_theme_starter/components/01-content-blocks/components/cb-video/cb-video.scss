@@ -1,0 +1,23 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: video.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb-video {
+  .js-cookie-content-blocker {
+    &::after {
+      padding-bottom: 0;
+    }
+  }
+
+  .media--view-mode-video-colorbox-modal {
+    cursor: pointer;
+  }
+}

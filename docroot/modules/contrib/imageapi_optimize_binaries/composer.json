@@ -1,0 +1,9 @@
+{
+    "name": "drupal/imageapi_optimize_binaries",
+    "description": "Provide image optimization plugins that use locally installed binaries.",
+    "type": "drupal-module",
+    "minimum-stability": "dev",
+    "require": {
+        "drupal/imageapi_optimize": "^4"
+    }
+}

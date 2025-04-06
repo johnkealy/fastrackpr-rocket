@@ -1,0 +1,6 @@
+image_url: '#'
+image_alt: 'This is the alt text'
+image_caption: 'This is an image caption.'
+attributes:
+  src: 'https://picsum.photos/200/200'
+  loading: 'lazy'

@@ -1,0 +1,19 @@
+# Schema for the configuration files of the Node Keep module.
+node_keep.settings:
+  type: config_object
+  label: 'Node Keep settings'
+  mapping:
+    hide_warning_messages:
+      type: boolean
+      label: 'Hide warning messages'
+
+node.type.*.third_party.node_keep:
+  type: config_object
+  label: 'Node Keep settings'
+  mapping:
+    node_keeper:
+      type: boolean
+      label: 'Prevent node deletion'
+    alias_keeper:
+      type: boolean
+      label: 'Prevent node alias being changed'

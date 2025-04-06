@@ -1,0 +1,15 @@
+/**
+ * Square mixin
+ *
+ * @param [Number] $dimensions = the height and width of the element
+ */
+/* stylelint-disable */
+/* stylelint-enable */
+/* stylelint-disable */
+/* stylelint-enable */
+.cb-video .js-cookie-content-blocker::after {
+  padding-bottom: 0;
+}
+.cb-video .media--view-mode-video-colorbox-modal {
+  cursor: pointer;
+}

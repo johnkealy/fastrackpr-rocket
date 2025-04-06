@@ -1,0 +1,20 @@
+block_content.type.*.third_party.icon_path:
+  type: string
+  label: 'Icon path'
+
+block.settings.search_redirect_block:
+  type: block_settings
+  label: 'Search Redirect block configuration'
+  mapping:
+    query_key:
+      type: string
+      label: 'Query key'
+    redirect_path:
+      type: string
+      label: 'Redirect to'
+    reset:
+      type: boolean
+      label: 'Show reset button'
+    placeholder_text:
+      type: text
+      label: 'Placeholder text'

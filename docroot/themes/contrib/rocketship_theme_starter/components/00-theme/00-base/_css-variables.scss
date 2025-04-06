@@ -1,0 +1,242 @@
+:root {
+  ////////////////////////////////////////////////////////////////////////////////
+  // *
+  // * Variables: basic colors
+  // *
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // ** Palette
+
+  --clr-spot-1: 196 100% 53%; // #10bfff Bright blue
+  --clr-spot-2: 337, 100%, 44%; // #de0055 Red
+
+  --clr-black: 0, 0%, 0%; // #000
+  --clr-white: 0, 0%, 100%;// #fff
+
+  --clr-off-white: 0, 0%, 95%; // #f3f3f3
+
+  --clr-gray-light-1: 0, 0%, 90%; // #e5e5e5
+  --clr-gray-light-2: 0, 0%, 82%; // #d1d1d1
+  --clr-gray-light-3: 0, 0%, 64%; // #a2a2a2
+  --clr-gray: 0, 0%, 44%; // #707070
+
+  // ** Main
+
+  --clr-base: 0, 0%, 19%; // #303030
+  --clr-base-dark: 0, 0%, 29%; // #4a4a4a
+  --clr-base-bg: 0, 0%, 100%; // #fff
+
+  --clr-heading: 0, 0%, 19%; // #303030
+  --clr-text: var(--clr-base);
+
+  --clr-link: var(--clr-spot-2);
+  --clr-link-hover: var(--clr-spot-1);
+  --clr-link-active: var(--clr-spot-1);
+
+  --clr-text-link: var(--clr-spot-2);
+  --clr-text-link-hover: var(--clr-spot-1);
+  --clr-text-link-active: var(--clr-spot-1);
+
+  --clr-button: var(--clr-white);
+  --clr-button-bg: var(--clr-spot-1);
+  --clr-button-hover: var(--clr-white);
+  --clr-button-hover-bg: var(--clr-spot-2);
+
+  --clr-border: var(--clr-gray-light-2);
+  --clr-list-item: var(--clr-spot-1);
+
+  // * Regions
+  --clr-header-top-bg: var(--clr-off-white);
+  --clr-navigation-bg: var(--clr-spot-1);
+
+  --clr-nav-submenu: var(--clr-off-white);
+  --clr-mobile-nav: var(--clr-base);
+  --clr-mobile-nav-bg: var(--clr-gray-light-3);
+  --clr-mobile-nav-open: var(--clr-white);
+  --clr-mobile-nav-open-bg: var(--clr-spot-1);
+
+  --clr-doormat: var(--clr-gray-light-1);
+  --clr-doormat-bg: var(--clr-gray-dark-2);
+  --clr-footer: var(--clr-white);
+  --clr-footer-bg: var(--clr-black);
+
+  // ** Tabs
+  --clr-tabs-background: var(--clr-gray-dark);
+  --clr-tab-text: var(--clr-white);
+  --clr-tab-bg: var(--clr-gray-light-1);
+  --clr-tab-bg-hover: var(--clr-link);
+  --clr-tab-bg-active: var(--clr-link);
+  --clr-tab-bg-active-2: var(--clr-white);
+
+  // * Alerts
+  --clr-error: 6, 78%, 57%; // #e74c3c
+  --clr-error-dark: 6, 63%, 46%; // #c0392b
+  --clr-status: 150, 52%, 51%; // #3fc380
+  --clr-status-dark: 156, 100%, 35%; // #00b16a
+  --clr-warning: 32, 82%, 56%; // #eb9532
+  --clr-warning-dark: 16, 87%, 62%; // #f2784b
+  --clr-neutral: 203, 100%, 37%; // #0074bd
+
+  // ** Forms
+
+  --clr-placeholder: var(--clr-gray-light-2);
+
+  --clr-form: var(--clr-base);
+  --clr-form-border: var(--clr-border);
+
+  --clr-form-inactive: var(--clr-gray-light-1);
+  --clr-form-active: var(--clr-spot-1);
+  --clr-form-active-border: var(--clr-spot-1-light);
+
+  --clr-form-disabled: var(--clr-gray-light-1);
+  --clr-form-disabled-bg: var(--clr-white);
+  --clr-form-disabled-border: var(--clr-gray-light-1);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // *
+  // * Variables: Fonts sizes and line heights
+  // *
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // ** Font families
+  // =============================================================================
+
+  // Be sure to change the fonts in the rocketship_theme_starter_preprocess_html().
+  --ff-fallback: "Arial", sans-serif;
+  --ff-base: var(--ff-fallback);
+  --ff-heading: var(--ff-fallback);
+
+  @at-root .font-text-01-loaded {
+    --ff-base: "Open Sans";
+  }
+
+  @at-root .font-text-01-loaded {
+    --ff-heading: "Open Sans";
+  }
+
+  // ** Font sizes
+  // =============================================================================
+  --fs-h1: #{rem(32)};
+  --fs-h2: #{rem(28)};
+  --fs-h3: #{rem(24)};
+  --fs-h4: #{rem(22)};
+  --fs-h5: #{rem(20)};
+  --fs-h6: #{rem(20)};
+
+  --fs-small: #{rem(11)};
+  --fs-base: #{rem(14)};
+  --fs-large: #{rem(18)};
+  --fs-huge: #{rem(60)};
+
+  @include bp-md {
+    --fs-h1: #{rem(40)};
+    --fs-h2: #{rem(35)};
+    --fs-h3: #{rem(30)};
+    --fs-h4: #{rem(26)};
+    --fs-h5: #{rem(24)};
+    --fs-h6: #{rem(22)};
+
+    --fs-small: #{rem(14)};
+    --fs-base: #{rem(16)};
+    --fs-large: #{rem(20)};
+    --fs-huge: #{rem(90)};
+  }
+
+  // ** Font weights
+  // =============================================================================
+  --fw-light: 300;
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+  --fw-black: 900;
+
+  // ** Line heights
+  // =============================================================================
+  --lh-heading: 1.2;
+  --lh-h1: var(--lh-heading);
+  --lh-h2: var(--lh-heading);
+  --lh-h3: var(--lh-heading);
+  --lh-h4: var(--lh-heading);
+  --lh-h5: var(--lh-heading);
+
+  --lh-base: 1.6;
+  --lh-small: 1.5;
+  --lh-large: 1.5;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // *
+  // * Variables: Spacing
+  // *
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // ** Vertical spacing
+  // =============================================================================
+
+  --gap-xxs: #{rem(5)};
+  --gap-xs: #{rem(10)};
+  --gap-sm: #{rem(15)};
+  --gap-md: #{rem(20)};
+  --gap-lg: #{rem(30)};
+  --gap-xl: #{rem(50)};
+
+  // space above and below certain elements: eg.blocks with a bg
+  --gap-vert-xs: #{rem(40)};
+  --gap-vert-sm: #{rem(40)};
+  --gap-vert-md: #{rem(50)};
+  --gap-vert-lg: #{rem(60)};
+  --gap-vert-lg-2: #{rem(75)};
+
+  // Use the following variable to apply a space that increases with screen size
+  --gap-vert: #{rem(40)};
+
+  @include bp-sm {
+    --gap-vert: var(--gap-vert-sm);
+  }
+
+  @include bp-md {
+    --gap-vert: var(--gap-vert-md);
+  }
+
+  @include bp-lg {
+    --gap-vert: var(--gap-vert-lg);
+  }
+
+  @include bp-xl {
+    --gap-vert: var(--gap-vert-lg-2);
+  }
+
+  // ** Horizontal spacing
+  // =============================================================================
+
+  // used by the grid for it's gutters
+  // DON'T override this if you only want to change the grid gutters
+  --gap-hor: #{rem(30)};
+
+  // space on the side of your main container so content doesn't stick to the sides
+  --container-padding: #{rem(15)};
+
+  // ** Fixed sizes
+  // =============================================================================
+
+  // used for things like the mobile menu icon & fixed menu bar
+  --menubar-height: #{rem(60)};
+  --mobile-header-space: #{rem(120)};
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // *
+  // * Variables: Grid
+  // *
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // * Grid settings
+  // =============================================================================
+
+  --grid-columns: 12;
+
+  // for container sizing
+  --max-width: #{rem(1200)};
+
+  // for inner max-width
+  --max-width-inner: #{rem(900)};
+}

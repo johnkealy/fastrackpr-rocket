@@ -1,0 +1,47 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Tabbed item field formatter
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+.field--type-tabbed-item {
+  --_tab-item-icon-size: var(--fs-base);
+}
+
+.field__item--type-tabbed-item {
+  border-top: rem(1) solid hsl(var(--clr-border));
+
+  &:last-child {
+    border-bottom: rem(1) solid hsl(var(--clr-border));
+  }
+}
+
+.tab-item__title {
+  position: relative;
+  margin: 0;
+  padding: var(--gap-sm) calc(var(--_tab-item-icon-size) + var(--gap-xs)) var(--gap-sm) 0;
+  cursor: pointer;
+  @include icon((
+    icon: chevron-down,
+    element: after,
+    size: var(--_tab-item-icon-size),
+    position: absolute,
+    right: 0,
+    top: 50%,
+  ));
+
+  &::after {
+    transform: translateY(-50%);
+    transition: transform $duration $easing;
+  }
+  .js-open & {
+    &::after {
+      transform: translateY(-50%) rotate(180deg);
+    }
+  }
+}
+
+.tab-item__content {
+  display: none;
+  padding-bottom: var(--gap-md); // Same as space between paragraphs.
+}

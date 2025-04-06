@@ -1,0 +1,19 @@
+diff --git a/core/modules/block_content/src/Plugin/Derivative/BlockContent.php b/core/modules/block_content/src/Plugin/Derivative/BlockContent.php
+index 5ba836f1a8..b9217c94f0 100644
+--- a/core/modules/block_content/src/Plugin/Derivative/BlockContent.php
++++ b/core/modules/block_content/src/Plugin/Derivative/BlockContent.php
+@@ -43,7 +43,13 @@ public static function create(ContainerInterface $container, $base_plugin_id) {
+    * {@inheritdoc}
+    */
+   public function getDerivativeDefinitions($base_plugin_definition) {
+-    $block_contents = $this->blockContentStorage->loadByProperties(['reusable' => TRUE]);
++    $ids = $this->blockContentStorage->getQuery()
++      ->condition('reusable', TRUE)
++      ->condition('info', '', '<>')
++      ->accessCheck(FALSE)
++      ->execute();
++    $block_contents = $this->blockContentStorage->loadMultiple($ids);
++
+     // Reset the discovered definitions.
+     $this->derivatives = [];
+     /** @var \Drupal\block_content\Entity\BlockContent $block_content */

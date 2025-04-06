@@ -1,0 +1,12 @@
+name: Dropsolid Purge
+description: 'Cache invalidation for sites running varnish'
+type: module
+core_version_requirement: ^9.5 || ^10 || ^11
+package: 'Purge - reverse proxies & CDNs'
+dependencies:
+  - purge:purge (>=3.0)
+
+# Information added by Drupal.org packaging script on 2025-01-06
+version: '8.x-1.1'
+project: 'dropsolid_purge'
+datestamp: 1736163376

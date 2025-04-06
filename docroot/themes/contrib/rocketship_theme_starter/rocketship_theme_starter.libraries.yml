@@ -1,0 +1,115 @@
+global:
+#  version: 1 Remove because a bug keeps caching the css even on cache clear
+  css:
+    theme:
+      css/style.css: {}
+      css/style.print.css: {}
+  js:
+    js/dest/scripts.js: { attributes: { defer: true } }
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+    - rocketship_theme_starter/component_iconfont
+
+# Component libraries
+
+
+
+component_iconfont:
+  css:
+    theme:
+      css/style.iconfont-classes.css: {}
+
+component_status:
+  js:
+    js/dest/status.js: { attributes: { defer: true } }
+  dependencies:
+    - core/drupal
+    - core/once
+
+component_search:
+  js:
+    js/dest/search-block.js: { attributes: { defer: true } }
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/once
+
+component_menu:
+  js:
+    js/dest/menu--mobile.js: { attributes: { defer: true } }
+    js/dest/menu--dropdown.js: { attributes: { defer: true } }
+  dependencies:
+    - core/drupal
+    - core/once
+
+component_language:
+  js:
+    js/dest/menu--language.js: { attributes: { defer: true } }
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+
+component_forms:
+  js:
+    js/dest/forms.js: { attributes: { defer: true } }
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/once
+
+component_tables:
+  js:
+    js/dest/tables.js: { attributes: { defer: true } }
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/once
+
+# Admin styling overrides
+# this is attached when in admin area and quickedit is turned on
+admin_overrides:
+  css:
+    theme:
+      css/style.admin.css: {}
+
+# content blocks
+rocketship_content_blocks:
+  css:
+    theme:
+      css/style.content-blocks.css: {}
+      css/style.content-blocks.print.css: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/once
+
+# features
+
+feature_header_sticky:
+  css:
+    theme:
+      css/style.features.header-sticky.css: {}
+  js:
+    js/dest/header-sticky.js: { attributes: { defer: true } }
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+
+# EXAMPLE for adding additional Feature libs:
+#
+# feature_example:
+#   css:
+#     theme:
+#       css/style.features.example.css: {}
+#       css/style.features.example.print.css: {}
+#   dependencies:
+#     - core/jquery
+#     - core/drupal
+#     - core/once

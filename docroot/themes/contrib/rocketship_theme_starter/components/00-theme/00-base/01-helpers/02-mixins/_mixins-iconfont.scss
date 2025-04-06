@@ -1,0 +1,135 @@
+/* stylelint-disable */
+@use "sass:map";
+
+$iconMapping: (
+  'angle-left': '\E001',
+  'angle-right': '\E002',
+  'angles-left': '\E003',
+  'angles-right': '\E004',
+  'bars': '\E005',
+  'check': '\E006',
+  'chevron-down': '\E007',
+  'chevron-left': '\E008',
+  'chevron-right': '\E009',
+  'circle-check': '\E00A',
+  'circle-exclamation': '\E00B',
+  'circle-question': '\E00C',
+  'envelope': '\E00D',
+  'facebook-f': '\E00E',
+  'file-image': '\E00F',
+  'file-pdf': '\E010',
+  'file': '\E011',
+  'info-circle': '\E012',
+  'instagram': '\E013',
+  'linkedin': '\E014',
+  'lock': '\E015',
+  'long-arrow-right': '\E016',
+  'move': '\E017',
+  'pinterest': '\E018',
+  'print': '\E019',
+  'quote-left': '\E01A',
+  'search': '\E01B',
+  'share-square': '\E01C',
+  'test': '\E01D',
+  'triangle-exclamation': '\E01E',
+  'twitter': '\E01F',
+  'xmark': '\E020',
+  'youtube': '\E021',
+  
+);
+
+@function icon-char($filename) {
+  @if (map.get($iconMapping, $filename) == null) {
+    @return '';
+  }
+
+  @return map.get($iconMapping, $filename);
+}
+
+// *
+// * Icon mixin: add a custom icon before or after an element
+//
+// * Settings via an object, containing:
+// * $icon
+// * $element: pseudo-element, default = before,
+// * $position,
+// * $top,
+// * $right,
+// * $bottom,
+// * $left,
+// * $margin,
+// * $size,
+// * $color,
+// * $align:middle,
+//
+// * USAGE:
+// * @include icon(icon: arrow-left, size: 30, margin: 0 rem(10) 0 0);
+@mixin icon($settings) {
+  // set variables
+  $icon: map-get($settings, icon);
+  $element: map-get($settings, element);
+  $position: map-get($settings, position);
+  $top: map-get($settings, top);
+  $right: map-get($settings, right);
+  $bottom: map-get($settings, bottom);
+  $left: map-get($settings, left);
+  $margin: map-get($settings, margin);
+  $size: map-get($settings, size);
+  $color: map-get($settings, color);
+  $align: map-get($settings, align);
+
+  // some defaults, used in case no $settings were given
+  $element-default: before;
+  $color-default: inherit;
+  $align-default: middle;
+
+  // if any are not filled in, fall back to defaults
+  @if ($element == null) {
+    $element: $element-default;
+  }
+  @if ($color == null) {
+    $color: $color-default;
+  }
+  @if ($align == null) {
+    $align: $align-default;
+  }
+
+  &:#{$element} {
+    content: icon-char($icon);
+    @if($position != null) {
+      position: $position;
+    }
+    @if($top != null) {
+      top: $top;
+    }
+    @if($right != null) {
+      right: $right;
+    }
+    @if($bottom != null) {
+      bottom: $bottom;
+    }
+    @if($left != null) {
+      left: $left;
+    }
+    @if ($margin != null) {
+      margin: $margin;
+    }
+    font-family: "iconfont";
+    @if ($size != null) {
+      font-size: rem($size);
+    }
+    display: inline-flex;
+    font-weight: normal;
+    line-height: 1;
+    // speak: none; // only necessary if not using the private unicode range (firstGlyph option)
+    text-decoration: none;
+    vertical-align: $align;
+    color: $color;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-style: normal;
+    font-variant: normal;
+    text-transform: none;
+  }
+}
+/* stylelint-enable */

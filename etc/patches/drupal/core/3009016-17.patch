@@ -1,0 +1,88 @@
+diff --git a/core/lib/Drupal/Core/Entity/ContentEntityBase.php b/core/lib/Drupal/Core/Entity/ContentEntityBase.php
+index 35dca9a9c6..4e2f6e166b 100644
+--- a/core/lib/Drupal/Core/Entity/ContentEntityBase.php
++++ b/core/lib/Drupal/Core/Entity/ContentEntityBase.php
+@@ -1151,6 +1151,13 @@ public function createDuplicate() {
+       $duplicate->loadedRevisionId = NULL;
+     }
+ 
++    // Change the status of the translations.
++    array_walk($duplicate->translations, function (&$translation) {
++      if ($translation['status'] === static::TRANSLATION_EXISTING) {
++        $translation['status'] = static::TRANSLATION_CREATED;
++      }
++    });
++
+     return $duplicate;
+   }
+ 
+diff --git a/core/tests/Drupal/KernelTests/Core/Entity/EntityDuplicateTest.php b/core/tests/Drupal/KernelTests/Core/Entity/EntityDuplicateTest.php
+index b01f6e4396..0a565d0449 100644
+--- a/core/tests/Drupal/KernelTests/Core/Entity/EntityDuplicateTest.php
++++ b/core/tests/Drupal/KernelTests/Core/Entity/EntityDuplicateTest.php
+@@ -2,7 +2,10 @@
+ 
+ namespace Drupal\KernelTests\Core\Entity;
+ 
++use Drupal\Core\TypedData\TranslationStatusInterface;
++use Drupal\entity_test\Entity\EntityTestMul;
+ use Drupal\entity_test\Entity\EntityTestRev;
++use Drupal\language\Entity\ConfigurableLanguage;
+ 
+ /**
+  * Test entity duplication.
+@@ -11,6 +14,11 @@
+  */
+ class EntityDuplicateTest extends EntityKernelTestBase {
+ 
++  /**
++   * {@inheritdoc}
++   */
++  protected static $modules = ['language', 'entity_test'];
++
+   /**
+    * @var \Drupal\Core\Entity\ContentEntityStorageInterface
+    */
+@@ -21,7 +29,13 @@ class EntityDuplicateTest extends EntityKernelTestBase {
+    */
+   protected function setUp(): void {
+     parent::setUp();
++
++    // Enable two languages.
++    ConfigurableLanguage::createFromLangcode('de')->save();
++    ConfigurableLanguage::createFromLangcode('nl')->save();
++
+     $this->installEntitySchema('entity_test_rev');
++    $this->installEntitySchema('entity_test_mul');
+     $this->entityTestRevStorage = $this->container->get('entity_type.manager')->getStorage('entity_test_rev');
+   }
+ 
+@@ -52,4 +66,28 @@ public function testDuplicateNonDefaultRevision() {
+     $this->assertEquals('Updated name', $duplicate_first_revision->label());
+   }
+ 
++  /**
++   * Tests that the translation status is changed when duplicating an entity.
++   */
++  public function testDuplicateEntityTranslationStatus() {
++    // Create a test entity with some translations.
++    $entity = EntityTestMul::create([
++      'name' => $this->randomString(),
++      'language' => 'en',
++    ]);
++    $entity->save();
++    $entity->addTranslation('de');
++    $entity->addTranslation('nl');
++    $entity->save();
++
++    // Verify that a removed translation is not affected.
++    $entity->removeTranslation('de');
++
++    $duplicate = $entity->createDuplicate();
++
++    $this->assertSame($duplicate->getTranslationStatus('en'), TranslationStatusInterface::TRANSLATION_CREATED, 'Language en has correct translation status after cloning.');
++    $this->assertSame($duplicate->getTranslationStatus('nl'), TranslationStatusInterface::TRANSLATION_CREATED, 'Language nl has correct translation status after cloning.');
++    $this->assertSame($duplicate->getTranslationStatus('de'), TranslationStatusInterface::TRANSLATION_REMOVED, 'Language de has correct translation status after cloning.');
++  }
++
+ }

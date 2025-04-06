@@ -1,0 +1,188 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Images
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+
+// * Image tag
+// =============================================================================
+
+img {
+  display: block;
+  border-style: none;
+  vertical-align: middle;
+  @include img-responsive();
+}
+
+// Specific for media with responsive images,
+// override the fallback image set by inline stying.
+.media__element {
+  background-repeat: no-repeat !important;
+}
+
+.media--type-image {
+  // Make sure preloader gets positioned correctly.
+  position: relative;
+}
+
+// ** Adding preloaders.
+@mixin lazy-image($wrapper) {
+  #{$wrapper} {
+    position: relative;
+
+    // Need positioning on these wrappers
+    // so make sure they take up space for the stretched image positioning.
+    .media--view-mode-layout-builder-background & {
+      position: static;
+    }
+
+    &.is-loading {
+      &::before {
+        position: absolute;
+        z-index: -1;
+        top: 50%;
+        left: 50%;
+        display: block;
+        height: rem(30);
+        width: rem(30);
+        max-width: none;
+        border-radius: 50%;
+        background-color: hsl(var(--clr-spot-1));
+        transform: translateX(-50%) translateY(-50%);
+        animation: blast 1s infinite ease-out;
+        content: "";
+        margin-inline: rem(-15);
+      }
+
+      &::after {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        display: block;
+        height: 100%;
+        width: 100%;
+        background-color: hsl(var(--clr-gray-light-1));
+        content: "";
+        opacity: .75;
+      }
+    }
+  }
+}
+
+@include lazy-image(".lazy-wrapper");
+@include lazy-image(".drimage");
+
+// Overwrite the animation to using only properties that won't affect positioning.
+.drimage.is-loading {
+  animation: opacity-change .45s ease-in-out forwards;
+}
+
+@keyframes opacity-change {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// Blazy override.
+@include lazy-image(".media--loading:not([data-animation]), .is-b-loading:not([data-animation])");
+
+// Don't need preloaders on these:
+// - cloned Slick elements.
+//  since they won't get detected by the lazyloading JS.
+// - Colorbox.
+//
+.slick-cloned,
+#colorbox {
+  .drimage {
+    &::before {
+      display: none;
+    }
+
+    img {
+      background-color: transparent;
+      box-shadow: none;
+    }
+  }
+}
+
+// * Picture tag.
+// =============================================================================
+
+picture {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%; /* Stretch to fit its containing element. */
+}
+
+picture img {
+  width: 100%; /* Stretch to fill the picture element. */
+}
+
+// * Images in CKE.
+// =============================================================================
+
+.text-long {
+  @include clearfix;
+
+  // -- Alignment and sizing responsive.
+  img,
+  figure,
+  [data-entity-type="media"] {
+    &,
+    &.align-left,
+    &.align-right,
+    &.align-center {
+      display: block;
+      float: none;
+      margin: 0 0 var(--gap-hor) 0;
+      max-width: 100%;
+      width: auto;
+      height: auto;
+    }
+
+    @include bp-sm {
+      &.align-left {
+        float: left;
+        margin: 0 var(--gap-hor) var(--gap-hor) 0;
+      }
+
+      &.align-right {
+        float: right;
+        margin: 0 0 var(--gap-hor) var(--gap-hor);
+      }
+
+      &.align-center {
+        margin-inline: auto;
+      }
+    }
+  }
+
+  figure,
+  [data-entity-type="media"] {
+    &.align-center {
+      img {
+        margin: 0 auto;
+      }
+    }
+
+    img {
+      // Reset for nested img in figure.
+      float: none;
+      padding: 0;
+    }
+  }
+
+  figcaption {
+    margin-top: rem(10);
+    display: block;
+    text-align: center;
+    font-style: italic;
+    color: hsl(var(--clr-gray));
+  }
+}

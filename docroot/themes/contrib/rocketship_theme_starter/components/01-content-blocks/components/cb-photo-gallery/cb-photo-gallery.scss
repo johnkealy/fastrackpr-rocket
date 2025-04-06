@@ -1,0 +1,169 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: photo gallery.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+@import "../../../00-theme/01-atoms/06-buttons/_buttons-helpers";
+
+.cb-photo-gallery {
+  --_photo-gallery-gap: var(--gap-sm);
+
+  .field-cb-media-unlimited {
+    a {
+      position: relative;
+      @include icon((
+        icon: search,
+        color: hsl(var(--clr-spot-1)),
+        size: 16,
+        element: after,
+        position: absolute,
+        right: var(--gap-xs),
+        bottom: var(--gap-xs),
+      ));
+
+      &::after {
+        @include square(rem(30));
+        align-items: center;
+        justify-content: center;
+        border-radius: rem(2);
+        background: hsl(var(--clr-white));
+        pointer-events: none;
+        opacity: .75;
+      }
+    }
+  }
+}
+
+.cb__intro--photo-gallery {
+  max-width: var(--max-width-inner);
+  margin-inline: auto;
+  text-align: center;
+}
+
+.cb__content--photo-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-cb-inner-vert) 0;
+}
+
+// ** Grid layout
+.cb-photo-gallery--vm-photo-gallery-grid {
+  .field__items--name-field-cb-media-unlimited {
+    display: grid;
+    gap: var(--_photo-gallery-gap);
+  }
+}
+
+// ** Masonry layout
+.cb-photo-gallery--vm-photo-gallery-masonry {
+  .field__items--name-field-cb-media-unlimited {
+    margin-top: calc(var(--_photo-gallery-gap) * -1);
+  }
+  .field__item--name-field-cb-media-unlimited {
+    top: 0; // Overridden by JS but need a starting point.
+    left: 0; // Overridden by JS but need a starting point.
+    width: 100%;
+    padding-top: var(--_photo-gallery-gap);
+  }
+}
+
+// ** Show/hide images with load more button.
+.has--load-more {
+  .field__item--name-field-cb-media-unlimited {
+    // Hide if index higher than limit of 6.
+    &:nth-child(n+7) {
+      display: none;
+    }
+
+    // Show if they have a visible class.
+    &.is--visible {
+      display: block;
+    }
+  }
+}
+
+// ** Load more button
+.field-cb-photo-gallery-load-more{
+  @include button-primary();
+  margin-inline: auto;
+
+  // Items are visible, so show the other text on the button ('show less').
+  .more {
+    display: none;
+  }
+
+  .less {
+    display: block;
+  }
+
+  // Items are hidden, so show the original text on the button ('show more').
+  .has--visible-items & {
+    .more {
+      display: block;
+    }
+
+    .less {
+      display: none;
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: Wide phone and bigger
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-xs-wide {
+  // ** Grid layout
+  .cb-photo-gallery--vm-photo-gallery-grid {
+    .field__items--name-field-cb-media-unlimited {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  // ** Masonry layout
+  .cb-photo-gallery--vm-photo-gallery-masonry {
+    .field__items--name-field-cb-media-unlimited {
+      margin-right: calc(var(--_photo-gallery-gap) / -2);
+      margin-left: calc(var(--_photo-gallery-gap) / -2);
+    }
+
+    .field__item--name-field-cb-media-unlimited {
+      width: math.div(100%, 2);
+      padding: var(--_photo-gallery-gap) calc(var(--_photo-gallery-gap) / 2) 0;
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  // ** Grid layout
+  .cb-photo-gallery--vm-photo-gallery-grid {
+    .field__items--name-field-cb-media-unlimited {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  // ** Masonry layout
+  .cb-photo-gallery--vm-photo-gallery-masonry {
+    .field__item--name-field-cb-media-unlimited {
+      width: math.div(100%, 3);
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  //
+}

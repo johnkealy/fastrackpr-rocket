@@ -1,0 +1,13 @@
+name: Node Keep Service & Tokens
+description: 'Extends node_keep module with a machine name and exposes protected nodes via a service and as tokens'
+type: module
+package: Node Keep
+core_version_requirement: ^8.8 || ^9 || ^10 || ^11
+dependencies:
+  - node_keep:node_keep
+  - token:token
+
+# Information added by Drupal.org packaging script on 2024-10-15
+version: '2.2.5'
+project: 'node_keep'
+datestamp: 1728988125

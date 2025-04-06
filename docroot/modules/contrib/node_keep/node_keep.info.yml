@@ -1,0 +1,13 @@
+name: Node Keep
+description: 'Adds a base field to all nodes to prevent accidental deletion by unauthorized users.'
+type: module
+package: Node Keep
+core_version_requirement: ^8.8 || ^9 || ^10 || ^11
+configure: node_keep.settings
+dependencies:
+  - drupal:node
+
+# Information added by Drupal.org packaging script on 2024-10-15
+version: '2.2.5'
+project: 'node_keep'
+datestamp: 1728988125

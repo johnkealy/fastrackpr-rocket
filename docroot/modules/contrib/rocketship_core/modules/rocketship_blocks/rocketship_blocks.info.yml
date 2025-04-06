@@ -1,0 +1,53 @@
+name: 'Rocketship Blocks'
+type: module
+description: 'Contains custom block types.'
+core_version_requirement: '^9.4 || ^10'
+group: Blocks
+show_during_install: true
+prechecked: true
+upgrades:
+  - 'rocketship_blocks_content:Rocketship Blocks Demo Content'
+package: Rocketship
+weight: 22
+dependencies:
+  - drupal:block
+  - drupal:block_content
+  - block_content_permissions:block_content_permissions
+  - block_form_alter:block_form_alter
+  - colorbox:colorbox
+  - drupal:content_translation
+  - drimage:drimage
+  - drupal:field
+  - field_formatter:field_formatter
+  - field_group:field_group
+  - focal_point:focal_point
+  - drupal:image
+  - drupal:language
+  - drupal:layout_builder
+  - layout_builder_extra_templates:layout_builder_extra_templates
+  - drupal:link
+  - drupal:media
+  - drupal:media_library
+  - drupal:node
+  - drupal:options
+  - rocketship_core:rocketship_core
+  - rocketship_core:menu_clickthrough
+  - smart_trim:smart_trim
+  - drupal:text
+  - drupal:user
+  - video_embed_field:video_embed_field
+  - drupal:views
+  - webform:webform
+  - section_library:section_library
+  - token:token
+  - slick:slick
+  - link_attributes:link_attributes
+  - single_content_sync:single_content_sync
+  - drupal:migrate
+  - migrate_plus:migrate_plus
+  - migrate_source_csv:migrate_source_csv
+
+# Information added by Drupal.org packaging script on 2024-11-27
+version: '6.2.1'
+project: 'rocketship_core'
+datestamp: 1732708115

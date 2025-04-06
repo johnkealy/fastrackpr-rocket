@@ -1,0 +1,98 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Social media sharing inside meta info of a node
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// *
+// =============================================================================
+
+.social-widgets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center; // make title and icons go on same line
+
+  .heading {
+    margin-bottom: 0;
+  }
+}
+
+.social-social-widgets__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: rem(10);
+}
+
+.social-widgets__title {
+  margin: 0 rem(10) 0 0;
+  font-size: var(--fs-base);
+  line-height: var(--lh-small);
+}
+
+.social-link {
+  a {
+    display: flex;
+    overflow: hidden;
+    justify-content: center;
+    align-items: center;
+    width: rem(32);
+    height: rem(32);
+    font-size: 0;
+    text-align: center;
+
+    @include icon((
+      icon: share-square,
+      size: 32,
+      color: hsl(var(--clr-base)),
+    ));
+
+    &:hover {
+      &::before {
+        color: hsl(var(--clr-link));
+      }
+    }
+  }
+
+  .facebook {
+    @include icon((
+      icon: facebook-f,
+      size: 22,
+    ));
+  }
+
+  .twitter {
+    @include icon((
+      icon: twitter,
+      size: 26,
+    ));
+  }
+
+  .pinterest {
+    @include icon((
+      icon: pinterest,
+      size: 28,
+    ));
+  }
+
+  .linkedin {
+    @include icon((
+      icon: linkedin,
+      size: 22,
+    ));
+  }
+
+  .print {
+    @include icon((
+      icon: print,
+      size: 22,
+    ));
+  }
+
+  .e_mail {
+    @include icon((
+      icon: envelope,
+      size: 28,
+    ));
+  }
+}
+

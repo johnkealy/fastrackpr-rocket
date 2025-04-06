@@ -1,0 +1,50 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Breadcrumbs
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+.breadcrumb {
+  @include list-reset;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.breadcrumb__item {
+  display: flex;
+  align-items: baseline;
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+
+  @include icon((
+    icon: chevron-right,
+    color: hsl(var(--clr-link)),
+    size: 8,
+    margin: 0 5px,
+  ));
+
+  &::before {
+    vertical-align: baseline;
+  }
+
+  &:first-child::before {
+    display: none;
+  }
+}
+
+.breadcrumb__element {
+  //
+}
+
+.breadcrumb__link {
+  @include link-underline((
+    color: var(--clr-spot-1),
+    color-hover: var(--clr-spot-2),
+    inverse: true
+  ));
+
+  &::after {
+    bottom: 1px;
+  }
+}

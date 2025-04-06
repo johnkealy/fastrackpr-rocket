@@ -1,0 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Form: Webform.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+.webform-submission-form {
+  .captcha {
+    width: 100%;
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  .webform-flexbox {
+    margin: 0 0 var(--gap-md);
+    gap: var(--_webform-gap, var(--gap-md));
+  }
+
+  .webform-flex--container {
+    margin: 0;
+  }
+}

@@ -1,0 +1,86 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Social media profiles links
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// *
+// =============================================================================
+
+.block-socialmedialinks,
+.block--type-social-media {
+  .h {
+    margin-bottom: 0;
+  }
+
+  &.block--region-doormat {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: rem(20);
+
+    .field {
+      a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0;
+        @include square(rem(24));
+
+        @include icon((
+          size: 24,
+        ));
+      }
+    }
+
+    .field--name-field-social-link-linkedin a {
+      &::before {
+        content: icon-char(linkedin);
+      }
+    }
+
+    .field--name-field-social-link-facebook a {
+      &::before {
+        content: icon-char(facebook-f);
+      }
+    }
+
+    .field--name-field-social-link-twitter a {
+      &::before {
+        content: icon-char(twitter);
+      }
+    }
+
+    .field--name-field-social-link-pinterest a {
+      &::before {
+        content: icon-char(pinterest);
+      }
+    }
+
+    .field--name-field-social-link-instagram a {
+      &::before {
+        content: icon-char(instagram);
+      }
+    }
+
+    .field--name-field-social-link-youtube a {
+      &::before {
+        content: icon-char(youtube);
+      }
+    }
+  }
+}
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-xs-only {
+  .block-socialmedialinks,
+  .block--type-social-media {
+    &.block--region-doormat {
+      justify-content: flex-start;
+    }
+  }
+}

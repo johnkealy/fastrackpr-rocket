@@ -1,0 +1,666 @@
+<?php
+
+/**
+ * @file
+ * Functions to support theming in the Rocketship Starter theme.
+ */
+
+use Drupal\block\Entity\Block;
+use Drupal\block_content\BlockContentInterface;
+use Drupal\Component\Utility\Html;
+// For theme settings.
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Link;
+
+/**
+ * Implements hook_library_info_alter().
+ */
+function rocketship_theme_starter_library_info_alter(&$libraries, $extension) {
+  if (isset($libraries['drupal.tableresponsive'])) {
+    unset($libraries['drupal.tableresponsive']);
+  }
+
+  /* EXAMPLE: override library file attributes
+   * @code
+   * if (isset($libraries['drimage'])) {
+   *   $libraries['drimage']['js']['js/drimage.min.js'] = [
+   *     'minified' => TRUE,
+   *     'attributes' => [
+   *       'defer' => TRUE,
+   *     ],
+   *   ];
+   * }
+   * @endcode
+   */
+}
+
+/**
+ * Implements hook_page_attachments_alter().
+ */
+function rocketship_theme_starter_page_attachments_alter(array &$page) {
+  $header_tags = [
+    // Responsive helper tags (based on html 5 boilerplate).
+    // Will always be needed: if it does not need to be zoomable the value
+    // must be changed here.
+    'viewport' => [
+      '#type' => 'html_tag',
+      '#tag' => 'meta',
+      '#attributes' => [
+        'name' => 'viewport',
+        'content' => 'width=device-width, initial-scale=1, minimum-scale=1',
+      ],
+    ],
+  ];
+  foreach ($header_tags as $name => $tag) {
+    $page['#attached']['html_head'][] = [$tag, $name];
+  }
+}
+
+/**
+ * Implements template_preprocess().
+ */
+function rocketship_theme_starter_preprocess(&$variables, $hook, $info) {
+  // Get base path in order to properly construct theme path in twig,
+  // using {{ base_path ~ directory }}
+  // https://drupal.stackexchange.com/questions/184148/get-path-to-image-src-from-twig-template#187083
+  $variables['base_path'] = base_path();
+
+  // Try adding 'is_front' var to preprocess.
+  // This is needed for the branding block.
+  // An exception might be thrown.
+  try {
+    $variables['is_front'] = \Drupal::service('path.matcher')->isFrontPage();
+
+    // Add a variable for the root path. This can be used to create a class and
+    // theme the page depending on the current path (e.g. node, admin, user) as
+    // well as more specific data like is-front.// get root path.
+    if ($variables['is_front']) {
+      $variables['root_path'] = FALSE;
+    }
+    else {
+      $system_path = \Drupal::service('path.current')->getPath();
+      $variables['root_path'] = explode('/', $system_path)[1];
+    }
+  }
+  catch (Exception $e) {
+    // If the database is not yet available,
+    // set default values for these variables.
+    $variables['is_front'] = FALSE;
+    $variables['db_is_active'] = FALSE;
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for HTML document templates.
+ *
+ * Adds body classes if certain regions have content.
+ */
+function rocketship_theme_starter_preprocess_html(&$variables) {
+  // We get the twig service to see if the debug is active.
+  if (Drupal::service('twig')->isDebug()) {
+    $variables['attributes']['class'][] = 'theme-debug-mode';
+  }
+
+  // Set 404 & 403 classes for theming,
+  // We check in current request is an exception to check which error is.
+  $status = Drupal::requestStack()->getCurrentRequest()->attributes->get('exception');
+  // Check different conditions to add body classes.
+  if ($status && ($status->getStatusCode() == 404 || $status->getStatusCode() == 403 || $status->getStatusCode() == 500 || $status->getStatusCode() == 503)) {
+    $variables['attributes']['class'][] = 'page--' . $status->getStatusCode();
+  }
+
+  // Add information about the number of sidebars.
+  if (!empty($variables['page']['sidebar_first']) && !empty($variables['page']['sidebar_second'])) {
+    $variables['attributes']['class'][] = 'layout-two-sidebars';
+  }
+  elseif (!empty($variables['page']['sidebar_first'])) {
+    $variables['attributes']['class'][] = 'layout-one-sidebar';
+    $variables['attributes']['class'][] = 'layout-sidebar-first';
+  }
+  elseif (!empty($variables['page']['sidebar_second'])) {
+    $variables['attributes']['class'][] = 'layout-one-sidebar';
+    $variables['attributes']['class'][] = 'layout-sidebar-second';
+  }
+  else {
+    $variables['attributes']['class'][] = 'layout-no-sidebars';
+  }
+
+  if (!empty($variables['page']['featured_top'])) {
+    $variables['attributes']['class'][] = 'has-featured-top';
+  }
+
+  if (!empty($variables['page']['primary_menu'])) {
+    $variables['attributes']['class'][] = 'has-off-canvas';
+  }
+
+  switch (Drupal::service('path.current')->getPath()) {
+    case '/user/login':
+    case '/user/password':
+      $variables['attributes']['class'][] = 'user-pages';
+      break;
+
+    case '/project/switch':
+      $variables['attributes']['class'][] = 'centered';
+      break;
+  }
+
+  // Get the contents of the SVG sprite.
+  $theme_path = Drupal::theme()->getActiveTheme()->getPath();
+  $inlineSVG = $theme_path . '/images/generated/sprite-inline.svg';
+
+  if (file_exists($inlineSVG)) {
+    $icons = file_get_contents($inlineSVG);
+
+    // Add a new render array to page_bottom so the icons get added to the page.
+    $variables['page_bottom']['icons'] = [
+      '#type' => 'inline_template',
+      '#template' => '<span class="hidden">' . $icons . '</span>',
+    ];
+  }
+
+  // Get the font files.
+  $cache = Drupal::cache();
+  $font_files = $cache->get('rocketship_theme_starter:font_files');
+
+  if ($font_files !== FALSE) {
+    $variables['webfont_config_font_files'] = $font_files->data;
+  }
+  else {
+    $font_files = [
+      'OpenSans/opensans-regular-webfont.woff2',
+      'OpenSans/opensans-italic-webfont.woff2',
+      'OpenSans/opensans-bold-webfont.woff2',
+      'iconfont/iconfont.woff2',
+    ];
+
+    foreach ($font_files as &$path) {
+      $path = $theme_path . '/fonts/' . $path;
+      $path .= '?' . substr(hash_file('md5', $path), 0, 6);
+    }
+
+    $cache->set('rocketship_theme_starter:font_files', $font_files);
+  }
+
+  $variables['webfont_config_font_files'] = $font_files;
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for page templates.
+ */
+function rocketship_theme_starter_preprocess_page(&$variables) {
+  // Set the options that apply to both page and maintenance page.
+  _rocketship_theme_starter_process_page($variables);
+
+  // Since the title and the shortcut link are both block level elements,
+  // positioning them next to each other is much simpler with a wrapper div.
+  if (!empty($variables['title_suffix']['add_or_remove_shortcut']) && $variables['title']) {
+    // Add a wrapper div using the title_prefix
+    // and title_suffix render elements.
+    $variables['title_prefix']['shortcut_wrapper'] = [
+      '#markup' => '<div class="shortcut-wrapper clearfix">',
+      '#weight' => 100,
+    ];
+    $variables['title_suffix']['shortcut_wrapper'] = [
+      '#markup' => '</div>',
+      '#weight' => -99,
+    ];
+    // Make sure the shortcut link is the first item in title_suffix.
+    $variables['title_suffix']['add_or_remove_shortcut']['#weight'] = -100;
+  }
+
+  // Make custom theme settings available in the javascript.
+  $themeSettings = [
+    'header_fixed',
+    'language_dropdown',
+    'scroll_to',
+    'scroll_to_exceptions',
+  ];
+
+  foreach ($themeSettings as $themeSetting) {
+    $variables[$themeSetting] = $variables['#attached']['drupalSettings']['theme_settings'][$themeSetting] = theme_get_setting($themeSetting);
+  }
+
+
+  $language = \Drupal::languageManager()->getCurrentLanguage();
+  if (isset($language) && $language !== NULL) {
+    $language_id = $language->getId();
+    if (isset($language_id) && $language_id !== NULL) {
+      $variables['#attached']['drupalSettings']['language'] = $language_id;
+    }
+  }
+
+  // Load certain libraries only if certain modules are enabled.
+  if ($variables['header_fixed'] == 1) {
+    $variables['#attached']['library'][] = 'rocketship_theme_starter/feature_header_sticky';
+  }
+}
+
+/**
+ * Implements theme_preprocess_block().
+ */
+function rocketship_theme_starter_preprocess_block(&$variables) {
+  // Add extra names to build better block classes using BEM
+  // + fix the id's to be unique.
+  $variables['attributes']['data-bem'] = [];
+
+  $blockId = $variables['elements']['#id'] ?? '';
+  if (!empty($variables['id'])) {
+    $blockId = $variables['id'];
+    $variables['id'] = Html::getUniqueId($blockId);
+  }
+  if (!empty($blockId) && $block = Block::load($blockId)) {
+    $variables['attributes']['data-bem']['originalId'] = $block->getOriginalId();
+    $region = $block->getRegion();
+  }
+  if (!empty($variables['elements']['#configuration']['region'])) {
+    $region = $variables['elements']['#configuration']['region'];
+  }
+  if (!empty($region)) {
+    // Only use the part before '_number'.
+    $regionArr = preg_split("/(_\d)+/", $region);
+    $region = $regionArr[0];
+    $variables['attributes']['data-bem']['region'] = $region;
+  }
+
+  if (isset($variables['elements']['content']['#block_content']) && $variables['elements']['content']['#block_content'] instanceof BlockContentInterface) {
+    /** @var \Drupal\block_content\BlockContentInterface $contentBlock */
+    $contentBlock = $variables['elements']['content']['#block_content'];
+    $bundle = $contentBlock->bundle();
+    $bundleCleanedUp = ltrim($bundle, 'cb_');
+
+    // If it's a content block, give it an extra class denoting that.
+    if (isset($variables['base_plugin_id']) && $variables['base_plugin_id'] === 'inline_block') {
+      $variables['attributes']['class'][] = 'content-block';
+    }
+
+    // Add type as data-bem attribute.
+    $variables['attributes']['data-bem']['type'] = $bundleCleanedUp;
+
+    // Add alignment class.
+    if ($contentBlock->hasField('field_cb_text_alignment')) {
+      $viewMode = $contentBlock->get('field_cb_text_alignment')->value;
+
+      if ($viewMode) {
+        $variables['attributes']['class'][] = 'cb--vm-' . $viewMode;
+        $variables['attributes']['class'][] = 'cb-' . $bundleCleanedUp . '--vm-' . $viewMode;
+      }
+    }
+
+    // Add view mode class.
+    if (isset($variables['configuration']['view_mode']) && ($viewMode = $variables['configuration']['view_mode']) !== 'full') {
+      $variables['attributes']['class'][] = Html::getClass('cb--vm-' . $viewMode);
+      $variables['attributes']['class'][] = Html::getClass('cb-' . $bundleCleanedUp . '--vm-' . $viewMode);
+    }
+
+    // Temporary fix for masonry javascript,
+    // Rocketship core is dependent on these classes.
+    if ($bundle === 'cb_photo_gallery') {
+      $variables['attributes']['class'][] = 'block--type-cb-photo-gallery';
+
+      if ($variables['configuration']['view_mode'] === 'photo_gallery_masonry') {
+        $variables['attributes']['class'][] = 'block--view-mode-photo-gallery-masonry';
+      }
+    }
+
+    // Temporary fix for FAQ javascript,
+    // Rocketship core is dependent on this class.
+    if ($bundle === 'cb_faq') {
+      $variables['attributes']['class'][] = 'block--type-cb-faq';
+    }
+  }
+
+  // Add a class 'nav--language--dropdown' to language block if dropdown mode
+  // is enabled.
+  if (isset($variables['base_plugin_id']) && $variables['base_plugin_id'] === 'language_block' && theme_get_setting('language_dropdown')) {
+    $variables['menu_block_bem_extra'][] = 'nav--language--dropdown';
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for links of language block.
+ */
+function rocketship_theme_starter_preprocess_links__language_block(&$variables) {
+  $variables['language_dropdown'] = theme_get_setting('language_dropdown');
+  $variables['language'] = Drupal::languageManager()->getCurrentLanguage();
+
+  if ($variables['language_dropdown']) {
+    foreach ($variables['links'] as &$link) {
+      if (isset($link['link'])) {
+        $link['link']['#options']['attributes']['class'][] = 'nav__link--language--dropdown';
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter() for PAGE.
+ */
+function rocketship_theme_starter_theme_suggestions_page_alter(array &$suggestions, array $variables) {
+  $path_args = explode('/', trim(Drupal::service('path.current')->getPath(), '/'));
+
+  $theme_suggestions = theme_get_suggestions($path_args, 'page');
+
+  // Remove duplicates.
+  $duplicated_suggestions = array_intersect($theme_suggestions, $suggestions);
+  $unique_suggestions = array_diff($suggestions, $theme_suggestions);
+  $suggestions = array_merge($duplicated_suggestions, $unique_suggestions);
+
+  $http_error_suggestions = [
+    'system.401' => 'page__system__401',
+    'system.403' => 'page__system__403',
+    'system.404' => 'page__system__404',
+  ];
+
+  $route_name = Drupal::routeMatch()->getRouteName();
+  if (isset($http_error_suggestions[$route_name])) {
+    $suggestions[] = 'page__error';
+    $suggestions[] = $http_error_suggestions[$route_name];
+  }
+}
+
+/**
+ * Implements template_preprocess_page().
+ */
+function rocketship_theme_starter_preprocess_maintenance_page(&$variables) {
+  // By default, site_name is set to Drupal if no db connection is available or
+  // during site installation.
+  // Setting site_name to an empty string makes the site and update pages
+  // look cleaner.
+  // @see template_preprocess_maintenance_page
+  if (!$variables['db_is_active']) {
+    $variables['site_name'] = '';
+  }
+
+  // Set the options that apply to both page and maintenance page.
+  _rocketship_theme_starter_process_page($variables);
+}
+
+/**
+ * Implements template_preprocess_node().
+ */
+function rocketship_theme_starter_preprocess_node(&$variables) {
+  // Remove the "Add new comment" link on teasers or when the comment form is
+  // displayed on the page.
+  if ($variables['teaser'] || !empty($variables['content']['comments']['comment_form'])) {
+    unset($variables['content']['links']['comment']['#links']['comment-add']);
+  }
+
+  $node = $variables['node'];
+  $createdTime = $node->getCreatedTime();
+  $date = Drupal::service('date.formatter')->format($createdTime, 'custom', t('l F jS Y \a\t h:i'));
+  $variables['date'] = $date;
+}
+
+/**
+ * Implements template_preprocess_field().
+ */
+function rocketship_theme_starter_preprocess_field(&$variables) {
+  if ($variables['field_name'] == 'title') {
+    if (!empty($variables['items'])) {
+      foreach ($variables['items'] as &$item) {
+        if ($item['content']['#type'] === 'html_tag') {
+          $item['content']['#attributes']['class'][] = 'heading';
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for menu.html.twig.
+ */
+function rocketship_theme_starter_preprocess_menu(&$variables) {
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter() for inputs.
+ *
+ * Add suggestions for custom twig files for inputs.
+ */
+function rocketship_theme_starter_theme_suggestions_input_alter(array &$suggestions, array $variables) {
+  if (isset($variables['element']['#type']) && $variables['element']['#type'] === 'entity_autocomplete') {
+    $suggestions[] = 'input__textfield__autocomplete';
+  }
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter().
+ */
+function rocketship_theme_starter_theme_suggestions_block_alter(array &$suggestions, array $variables) {
+  if (isset($variables['elements']['#id'])) {
+    $block_id = $variables['elements']['#id'];
+    $block = Block::load($block_id);
+    if (!empty($block)) {
+      $region = $block->getRegion();
+      if ($region !== NULL) {
+        $suggestions[] = $variables['theme_hook_original'] . '__' . $region;
+        $suggestions[] = $variables['theme_hook_original'] . '__' . $region . '__' . $block_id;
+      }
+    }
+  }
+}
+
+/**
+ * Helper function for handling the site name and slogan.
+ *
+ * @param array $variables
+ *   Build array.
+ */
+function _rocketship_theme_starter_process_page(&$variables) {
+  $site_config = \Drupal::config('system.site');
+  // Always print the site name and slogan, but if they are toggled off,
+  // we'll just hide them visually.
+  $variables['hide_site_name'] = !theme_get_setting('features.name');
+  $variables['hide_site_slogan'] = !theme_get_setting('features.slogan');
+  if ($variables['hide_site_name']) {
+    // If toggle_name is FALSE, the site_name will be empty, so we rebuild it.
+    $variables['site_name'] = $site_config->get('name');
+  }
+  if ($variables['hide_site_slogan'] && $site_config->get('slogan')) {
+    // If toggle_site_slogan is FALSE, the site_slogan will be empty,
+    // so we rebuild it.
+    $variables['site_slogan']['#markup'] = $site_config->get('slogan');
+  }
+
+  if (isset($variables['page']['content']['messages'])) {
+    $variables['page']['messages'] = $variables['page']['content']['messages'];
+    unset($variables['page']['content']['messages']);
+  }
+}
+
+/**
+ * Implements template_preprocess_table().
+ */
+function rocketship_theme_starter_preprocess_table(&$variables) {
+  // Turn zebra striping (odd/even) off.
+  $variables['no_striping'] = TRUE;
+
+  // If part of a form don't make changes to the table.
+  if (!$variables['responsive'] || in_array('field-multiple-table', $variables['attributes']['class'], TRUE)) {
+    return;
+  }
+
+  // Replacing drupal responsive, 'cause it's crap:
+  //
+  // - turn off the resp. table lib
+  // - remodel the html output:
+  // --- wrapper with classes AROUND the table: done in TWIG template
+  // --- add th's text into data-attributes on the td's in the Twig templates:
+  // --- done in theme function
+  //
+  // Any tables that are not affected with this,
+  // will be handled by a javascript function called in the table component
+  // that checks for the presence of the responsive wrapper.
+  // !!! IF YOU DON'T WANT A SPECIFIC TABLE TO BE RESPONSIVE,
+  // SET THE 'RESPONSIVE' ATTRIBUTE TO FALSE.
+  // VIA A THEME FUNCTION OR IN AN OVERRIDDEN TWIG TEMPLATE !!!!!!!!!!!!!!!
+  // eg. // $yourTableVariables['responsive'] = FALSE;
+  //
+  // (except for CKE tables, those are purely done via the JS below)
+  // Change this to 'table--reformatted' to get 'reformatted' responsive
+  // behavior where cells go in 1 column on mobile,
+  // prefixed by the associated title.
+  $variables['attributes']['class'][] = 'table--scroll';
+
+  rocketship_theme_starter__responsive_table($variables);
+
+  if (isset($variables['#attached'], $variables['#attached']['library'])) {
+    $index = array_search('core/drupal.tableresponsive', $variables['#attached']['library'], TRUE);
+    if ($index !== FALSE) {
+      unset($variables['#attached']['library'][$index]);
+    }
+  }
+}
+
+/**
+ * Implements template_preprocess_table for office hours.
+ */
+function rocketship_theme_starter_preprocess_office_hours_table(&$variables) {
+  // We don't want the office hours table to be responsive
+  // because it will no longer be functional.
+  //
+  // HOWEVER: better would be not to render it as a table but as divs.
+  $variables['table']['#responsive'] = FALSE;
+}
+
+/**
+ * Implements hook_preprocess_views_view().
+ */
+function rocketship_theme_starter_preprocess_views_view_table(&$variables) {
+  // We want tables from views to be using scrolling
+  // this usually works better for most purposes (eg. for sortable tables).
+  $variables['responsive'] = TRUE;
+  $variables['attributes']['class'][] = 'table--scroll';
+
+  rocketship_theme_starter__responsive_table($variables);
+}
+
+/**
+ * Adds an option to the background color field.
+ *
+ * @param array $options
+ *   Contains all the options for background color field.
+ */
+function rocketship_theme_starter_rocketship_layout_bg_color_options_list(array &$options) {
+  /*
+   * Example: Selectively adding or removing colors:
+   *   make a new array to loop, mirroring our original one
+   *
+   * @code
+   * $newOptions = $options;
+   * // clear the options so we can rebuild it & selectively replace some colors
+   * $options = [];
+   * // loop the new array
+   * // and only add the colors we want into our color options.
+   * foreach($newOptions as $key => $value) {
+   *   // So we remove 'grey' and style the transparent color to be
+   *   // grey in style.admin.scss
+   *   if (substr( $key, 0, 4 ) !== "grey") {
+   *     $options[$key] = $value;
+   *   }
+   * }
+   * @endcode
+   * Example: adding colors
+   * -- be advised: this bypasses the config, so you need to add styling in
+   * admin style scss for the admin preview.
+   * $options['spot-03/aabbcc/aabbcc'] = 'spot-03/aabbcc/aabbcc';
+   */
+}
+
+/**
+ * Function Triggered by rocketship_core.
+ */
+function rocketship_theme_starter_dropsolid_event_rocketship_layout_bg_color_options_list(array &$options) {
+  rocketship_theme_starter_rocketship_layout_bg_color_options_list($options);
+}
+
+/**
+ * Function Triggered by rocketship_core.
+ */
+function rocketship_theme_starter_rocketship_event_rocketship_layout_bg_color_options_list(array &$options) {
+  rocketship_theme_starter_rocketship_layout_bg_color_options_list($options);
+}
+
+/**
+ * Add extra theme settings.
+ *
+ * Https://www.drupal.org/docs/8/theming-drupal-8/creating-advanced-theme-settings
+ * https://drupal.stackexchange.com/questions/191983/how-do-i-add-custom-theme-settings
+ * https://drupal.stackexchange.com/questions/220400/how-to-make-custom-fieldset-collapsed-by-default-in-drupal-8#220402
+ */
+function rocketship_theme_starter_form_system_theme_settings_alter(&$form, FormStateInterface $form_state, $form_id = NULL) {
+  // Work-around for a core bug affecting admin themes. See issue #943212.
+  if (isset($form_id)) {
+    return;
+  }
+
+  $form['theme_settings'] = [
+    '#type' => 'details',
+    '#title' => t('Theme settings'),
+    '#open' => TRUE,
+  ];
+
+  $form['theme_settings']['header_fixed'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Fixed header'),
+    '#default_value' => theme_get_setting('header_fixed'),
+    '#description' => t("This setting will make your site header sticky and relies on Sass as well as JS in your theme component's organisms/header folder"),
+  ];
+
+  $form['theme_settings']['language_abbr'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Language abbreviations'),
+    '#default_value' => theme_get_setting('language_abbr'),
+    '#description' => t("Do you want language abbreviations (eg. 'nl') or the default language labels to be used when displaying the language menu?"),
+  ];
+
+  $form['theme_settings']['language_dropdown'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Language dropdown'),
+    '#default_value' => theme_get_setting('language_dropdown'),
+    '#description' => t("This setting will turn your language menu into a dropdown. Relies on Sass and JS in your theme component's molecules/menus/menu--language folder."),
+  ];
+
+  $form['theme_settings']['scroll_to'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Animated anchor scrolling'),
+    '#default_value' => theme_get_setting('scroll_to'),
+    '#description' => t("This setting will turn on animated scrolling for anchor links in the same page. Relies on JS in your theme component's 00-base/06-scripts folder."),
+  ];
+
+  $form['theme_settings']['scroll_to_exceptions'] = [
+    '#type' => 'textfield',
+    '#title' => t('Exceptions'),
+    '#default_value' => theme_get_setting('scroll_to_exceptions'),
+    '#description' => t('This field allows you to pass anchor link selectors that should not have animated scrolling. <br />Pass one or multiple comma-separated css selectors like this: <code>a[href="#my_exception"], a.no-smooth-scroll</code> <br />Be careful to avoid having multiple anchor links pointing to the same anchor.'),
+  ];
+
+}
+
+/**
+ * Helper function for responsive tables.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - header
+ *   - rows
+ *   - footer
+ *   - attributes
+ *   - caption
+ *   - colgroups
+ *   - sticky
+ *   - empty.
+ */
+function rocketship_theme_starter__responsive_table($variables) {
+  foreach ($variables['rows'] as $row) {
+    foreach ($row['cells'] as $key => $cell) {
+      if (isset($variables['header'][$key]['content'])) {
+        $headerTitle = $variables['header'][$key]['content'];
+        if ($headerTitle instanceof Link) {
+          $headerTitle = $headerTitle->toString();
+        }
+        $cell['attributes']->setAttribute('data-title', $headerTitle);
+      }
+    }
+  }
+}

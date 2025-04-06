@@ -1,0 +1,261 @@
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'
+-
+  label_hidden: true
+  field_name: media_image
+  field_type: entity_reference
+  bem_field_extra:
+    - 'blazy'
+    - 'blazy--field'
+    - 'blazy--field-media-image'
+  field_attributes:
+    'data-blazy': ''
+  url: "#test-url"
+  settings:
+    lazy: true
+    use_loading: true
+  blazy_bem_modifiers:
+    - 'bundle--image'
+    - blazy
+    - image
+    - loading
+  image_alt: 'A 2:3 image'
+  image_sizes: '100vw'
+  image_bem_extra:
+    - 'media__image'
+    - 'media__element'
+    - 'b-lazy'
+  output_image_tag: true
+  image_attributes:
+    src: 'https://picsum.photos/100/400'
+    srcset: 'https://picsum.photos/216/768 480w, https://picsum.photos/627/940 768w, https://picsum.photos/800/1200 940w'

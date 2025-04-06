@@ -1,0 +1,108 @@
+diff --git a/src/Form/AddSectionToLibraryForm.php b/src/Form/AddSectionToLibraryForm.php
+index 38b3b4f..ec4a509 100644
+--- a/src/Form/AddSectionToLibraryForm.php
++++ b/src/Form/AddSectionToLibraryForm.php
+@@ -5,6 +5,7 @@ namespace Drupal\section_library\Form;
+ use Drupal\Core\Ajax\AjaxFormHelperTrait;
+ use Drupal\Core\Form\FormBase;
+ use Drupal\Core\Form\FormStateInterface;
++use Drupal\layout_builder\Controller\LayoutRebuildTrait;
+ use Drupal\layout_builder\LayoutBuilderHighlightTrait;
+ use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
+ use Drupal\layout_builder\SectionStorageInterface;
+@@ -12,7 +13,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
+ use Drupal\section_library\Entity\SectionLibraryTemplate;
+ use Drupal\file\Entity\File;
+ use Drupal\section_library\DeepCloningTrait;
+-use Drupal\section_library\SectionLibraryRebuildTrait;
+ use Drupal\Component\Uuid\UuidInterface;
+ use Drupal\Core\Entity\EntityTypeManagerInterface;
+ 
+@@ -27,7 +27,7 @@ class AddSectionToLibraryForm extends FormBase {
+   use AjaxFormHelperTrait;
+   use LayoutBuilderHighlightTrait;
+   use DeepCloningTrait;
+-  use SectionLibraryRebuildTrait;
++  use LayoutRebuildTrait;
+ 
+   /**
+    * The layout tempstore repository.
+@@ -178,7 +178,7 @@ class AddSectionToLibraryForm extends FormBase {
+    * {@inheritdoc}
+    */
+   protected function successfulAjaxSubmit(array $form, FormStateInterface $form_state) {
+-    return $this->closeDialog();
++    return $this->rebuildAndClose($this->sectionStorage);
+   }
+ 
+ }
+diff --git a/src/Form/AddTemplateToLibraryForm.php b/src/Form/AddTemplateToLibraryForm.php
+index 70c6e8d..89d1718 100644
+--- a/src/Form/AddTemplateToLibraryForm.php
++++ b/src/Form/AddTemplateToLibraryForm.php
+@@ -5,6 +5,7 @@ namespace Drupal\section_library\Form;
+ use Drupal\Core\Ajax\AjaxFormHelperTrait;
+ use Drupal\Core\Form\FormBase;
+ use Drupal\Core\Form\FormStateInterface;
++use Drupal\layout_builder\Controller\LayoutRebuildTrait;
+ use Drupal\layout_builder\LayoutBuilderHighlightTrait;
+ use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
+ use Drupal\layout_builder\SectionStorageInterface;
+@@ -12,7 +13,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
+ use Drupal\section_library\Entity\SectionLibraryTemplate;
+ use Drupal\file\Entity\File;
+ use Drupal\section_library\DeepCloningTrait;
+-use Drupal\section_library\SectionLibraryRebuildTrait;
+ use Drupal\Component\Uuid\UuidInterface;
+ use Drupal\Core\Entity\EntityTypeManagerInterface;
+ 
+@@ -27,7 +27,7 @@ class AddTemplateToLibraryForm extends FormBase {
+   use AjaxFormHelperTrait;
+   use LayoutBuilderHighlightTrait;
+   use DeepCloningTrait;
+-  use SectionLibraryRebuildTrait;
++  use LayoutRebuildTrait;
+ 
+   /**
+    * The layout tempstore repository.
+@@ -179,7 +179,7 @@ class AddTemplateToLibraryForm extends FormBase {
+    * {@inheritdoc}
+    */
+   protected function successfulAjaxSubmit(array $form, FormStateInterface $form_state) {
+-    return $this->closeDialog();
++    return $this->rebuildAndClose($this->sectionStorage);
+   }
+ 
+ }
+diff --git a/src/SectionLibraryRebuildTrait.php b/src/SectionLibraryRebuildTrait.php
+deleted file mode 100644
+index 873b8dc..0000000
+--- a/src/SectionLibraryRebuildTrait.php
++++ /dev/null
+@@ -1,26 +0,0 @@
+-<?php
+-
+-namespace Drupal\section_library;
+-
+-use Drupal\Core\Ajax\AjaxResponse;
+-use Drupal\Core\Ajax\CloseDialogCommand;
+-
+-/**
+- * Provides AJAX responses to rebuild the Layout Builder.
+- */
+-trait SectionLibraryRebuildTrait {
+-
+-  /**
+-   * Close the dialog.
+-   *
+-   * @return \Drupal\Core\Ajax\AjaxResponse
+-   *   An AJAX response to either rebuild the layout and close the dialog, or
+-   *   reload the page.
+-   */
+-  protected function closeDialog() {
+-    $response = new AjaxResponse();
+-    $response->addCommand(new CloseDialogCommand('#drupal-off-canvas'));
+-    return $response;
+-  }
+-
+-}

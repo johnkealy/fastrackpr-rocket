@@ -1,0 +1,33 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - block_content.type.site_branding
+    - field.field.block_content.site_branding.body
+    - field.field.block_content.site_branding.field_media_info_image
+  module:
+    - text
+id: block_content.site_branding.default
+targetEntityType: block_content
+bundle: site_branding
+mode: default
+content:
+  body:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_media_info_image:
+    type: entity_reference_entity_view
+    label: hidden
+    settings:
+      view_mode: drimage_1_1
+      link: false
+    third_party_settings: {  }
+    weight: 0
+    region: content
+hidden:
+  langcode: true
+  search_api_excerpt: true

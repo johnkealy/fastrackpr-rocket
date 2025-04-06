@@ -1,0 +1,74 @@
+{
+  "name": "drupal/dropsolid_rocketship_profile",
+  "description": "The installation profile for Dropsolid products.",
+  "type": "drupal-profile",
+  "homepage": "https://drupal.org/project/dropsolid_rocketship_profile",
+  "authors": [
+    {
+      "name": "Laurens Van Damme",
+      "homepage": "https://www.drupal.org/u/l_vandamme",
+      "role": "Maintainer"
+    },
+    {
+      "name": "Oleksandr Kuzava",
+      "homepage": "https://www.drupal.org/u/nginex",
+      "role": "Maintainer"
+    },
+    {
+      "name": "Nick Vanpraet",
+      "homepage": "https://www.drupal.org/u/grayle",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "docs": "https://drupal.org/project/dropsolid_rocketship_profile"
+  },
+  "require": {
+    "drupal/address": "^1.12 || ^2.0",
+    "drupal/allowed_formats": "^3.0",
+    "drupal/block_content_permissions": "^1.11",
+    "drupal/captcha": "^1.10 || ^2.0",
+    "drupal/chosen": "^3.0",
+    "drupal/config_import_single": "^2.0",
+    "drupal/critical_css": "^1.19",
+    "drupal/csp": "^1.17",
+    "drupal/devel": "^5.0",
+    "drupal/devel_php": "^1.5",
+    "drupal/disable_language": "^1.0@RC",
+    "drupal/dropsolid_purge": "^1.1",
+    "drupal/email_registration":"^2.0@RC",
+    "drupal/environment_indicator": "^4.0",
+    "drupal/facets": "^2.0",
+    "drupal/geocoder": "^3.34 || ^4.9",
+    "drupal/geofield": "^1.53",
+    "drupal/geofield_map": "^11.0",
+    "drupal/http_cache_control": "^2.1",
+    "drupal/imageapi_optimize": "^4.0",
+    "drupal/imageapi_optimize_binaries": "^1.0",
+    "drupal/imageapi_optimize_resmushit": "^2.0",
+    "drupal/link_attributes": "^2.1",
+    "drupal/memcache": "^2.5",
+    "drupal/minifyhtml": "^2.0",
+    "drupal/office_hours": "^1.11",
+    "drupal/path_redirect_import": "^2.0",
+    "drupal/purge": "^3.4",
+    "drupal/r4032login": "^2.2",
+    "drupal/rabbit_hole": "^1.0",
+    "drupal/redirect": "^1.8",
+    "drupal/reroute_email": "^2.3@RC",
+    "drupal/rocketship_core": "^6.2",
+    "drupal/seckit": "^2.0",
+    "drupal/simple_recaptcha": "^1.0@beta",
+    "drupal/stage_file_proxy": "^3.1",
+    "drupal/symfony_mailer": "^1.2",
+    "drupal/twig_xdebug": "^1.4",
+    "drupal/unified_twig_ext": "^1.1",
+    "drupal/views_exposed_filter_blocks": "^1.4",
+    "kint-php/kint": "^3.3"
+  },
+  "minimum-stability": "beta",
+  "prefer-stable": true,
+  "config": {
+    "sort-packages": true
+  }
+}

@@ -1,0 +1,3 @@
+services:
+  rocketship_seo.schema_org_generator:
+    class: Drupal\rocketship_seo\RocketshipSchemaOrgGenerator

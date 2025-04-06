@@ -1,0 +1,9 @@
+config_import_locale.settings:
+  type: mapping
+  mapping:
+    overwrite_interface_translation:
+      label: Overwrite interface translation
+      type: string
+    overwrite_context:
+      label: Overwrite context
+      type: string

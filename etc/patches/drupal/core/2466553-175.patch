@@ -1,0 +1,159 @@
+diff --git forkSrcPrefix/core/lib/Drupal/Core/Menu/MenuLinkTranslationInterface.php forkDstPrefix/core/lib/Drupal/Core/Menu/MenuLinkTranslationInterface.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..3153243e9da6597a132e725d76744b9ca9aa42bb
+--- /dev/null
++++ forkDstPrefix/core/lib/Drupal/Core/Menu/MenuLinkTranslationInterface.php
+@@ -0,0 +1,21 @@
++<?php
++
++namespace Drupal\Core\Menu;
++
++/**
++ * Defines an interface for exposing multilingual capabilities.
++ */
++interface MenuLinkTranslationInterface {
++
++  /**
++   * Determines if menu link has a translation.
++   *
++   * @param string $langcode
++   *   The langcode.
++   *
++   * @return bool
++   *   TRUE if menu link has a translation, FALSE if not.
++   */
++  public function hasTranslation($langcode) : bool;
++
++}
+diff --git forkSrcPrefix/core/modules/system/src/Plugin/Block/SystemMenuBlock.php forkDstPrefix/core/modules/system/src/Plugin/Block/SystemMenuBlock.php
+index 8918d4b2afaee87f0dabe737cd3ab1cf0973a795..b6ef611a9d5e5ab5d096127ae39a1e5f66acf511 100644
+--- forkSrcPrefix/core/modules/system/src/Plugin/Block/SystemMenuBlock.php
++++ forkDstPrefix/core/modules/system/src/Plugin/Block/SystemMenuBlock.php
+@@ -192,6 +192,7 @@ public function build() {
+     $manipulators = [
+       ['callable' => 'menu.default_tree_manipulators:checkAccess'],
+       ['callable' => 'menu.default_tree_manipulators:generateIndexAndSort'],
++      ['callable' => 'menu.language_tree_manipulator:filterLanguage'],
+     ];
+     $tree = $this->menuTree->transform($tree, $manipulators);
+     return $this->menuTree->build($tree);
+diff --git forkSrcPrefix/core/modules/menu_link_content/src/Plugin/Menu/MenuLinkContent.php forkDstPrefix/core/modules/menu_link_content/src/Plugin/Menu/MenuLinkContent.php
+index 4c07d4d9ccff28bdcd2bfca7c0be418fcda3a2e7..381094016a897847c3090831bd262872dd6004a3 100644
+--- forkSrcPrefix/core/modules/menu_link_content/src/Plugin/Menu/MenuLinkContent.php
++++ forkDstPrefix/core/modules/menu_link_content/src/Plugin/Menu/MenuLinkContent.php
+@@ -7,14 +7,16 @@
+ use Drupal\Core\Entity\EntityTypeManagerInterface;
+ use Drupal\Core\Language\LanguageManagerInterface;
+ use Drupal\Core\Menu\MenuLinkBase;
++use Drupal\Core\Menu\MenuLinkTranslationInterface;
+ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+ use Drupal\menu_link_content\MenuLinkContentInterface;
++use Drupal\Core\Url;
+ use Symfony\Component\DependencyInjection\ContainerInterface;
+ 
+ /**
+  * Provides the menu link plugin for content menu links.
+  */
+-class MenuLinkContent extends MenuLinkBase implements ContainerFactoryPluginInterface {
++class MenuLinkContent extends MenuLinkBase implements ContainerFactoryPluginInterface, MenuLinkTranslationInterface {
+ 
+   /**
+    * Entities IDs to load.
+@@ -280,6 +282,19 @@ public function isTranslatable() {
+     return $this->getEntity()->isTranslatable();
+   }
+ 
++  /**
++   * {@inheritdoc}
++   */
++  public function hasTranslation($langcode) : bool {
++    $entity = $this->getEntity();
++
++    if (!$entity->hasTranslation($langcode)) {
++      return FALSE;
++    }
++
++    return (bool) $entity->getTranslation($langcode)->content_translation_status->value;
++  }
++
+   /**
+    * {@inheritdoc}
+    */
+diff --git forkSrcPrefix/core/lib/Drupal/Core/Menu/LanguageMenuLinkManipulator.php forkDstPrefix/core/lib/Drupal/Core/Menu/LanguageMenuLinkManipulator.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..40292b39b5a6d36d40cee0a466ee2d423d931c46
+--- /dev/null
++++ forkDstPrefix/core/lib/Drupal/Core/Menu/LanguageMenuLinkManipulator.php
+@@ -0,0 +1,57 @@
++<?php
++
++namespace Drupal\Core\Menu;
++
++use Drupal\Core\Language\LanguageManagerInterface;
++use Drupal\Core\Language\LanguageInterface;
++
++/**
++ * Provides a menu link language manipulator.
++ */
++class LanguageMenuLinkManipulator {
++
++  /**
++   * The language manager.
++   *
++   * @var \Drupal\Core\Language\LanguageManagerInterface
++   */
++  protected $languageManager;
++
++  /**
++   * LanguageMenuLinkManipulator constructor.
++   *
++   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
++   *   The language manager.
++   */
++  public function __construct(LanguageManagerInterface $language_manager) {
++    $this->languageManager = $language_manager;
++  }
++
++  /**
++   * Hide menu links that do not have translation for the current language.
++   *
++   * @param \Drupal\Core\Menu\MenuLinkTreeElement[] $tree
++   *   The menu link tree to manipulate.
++   *
++   * @return \Drupal\Core\Menu\MenuLinkTreeElement[]
++   *   The manipulated menu link tree.
++   */
++  public function filterLanguage(array $tree) : array {
++    $current_language = $this->languageManager->getCurrentLanguage()->getId();
++
++    foreach ($tree as $key => $link) {
++      if ($link->link instanceof MenuLinkTranslationInterface) {
++        // If the link is translatable, but has no translation, hide it.
++        if ($link->link->isTranslatable() && !$link->link->hasTranslation($current_language)) {
++          unset($tree[$key]);
++        }
++        elseif ($link->hasChildren) {
++          // Recursively call this method to filter out untranslated children.
++          $tree[$key]->subtree = $this->filterLanguage($link->subtree);
++        }
++      }
++    }
++    return $tree;
++  }
++
++}
+diff --git forkSrcPrefix/core/core.services.yml forkDstPrefix/core/core.services.yml
+index 72ff560296e90685913f13b1034eff2c790c7302..e9a10b9022c9a51579e40888ccb837983676d134 100644
+--- forkSrcPrefix/core/core.services.yml
++++ forkDstPrefix/core/core.services.yml
+@@ -779,6 +779,10 @@ services:
+     class: Drupal\Core\Menu\DefaultMenuLinkTreeManipulators
+     arguments: ['@access_manager', '@current_user', '@entity_type.manager', '@module_handler']
+   Drupal\Core\Menu\DefaultMenuLinkTreeManipulators: '@menu.default_tree_manipulators'
++  menu.language_tree_manipulator:
++    class: Drupal\Core\Menu\LanguageMenuLinkManipulator
++    arguments: ['@language_manager']
++  Drupal\Core\Menu\LanguageMenuLinkManipulator: '@menu.language_tree_manipulator'
+   menu.active_trail:
+     class: Drupal\Core\Menu\MenuActiveTrail
+     arguments: ['@plugin.manager.menu.link', '@current_route_match', '@cache.menu', '@lock']

@@ -1,0 +1,12 @@
+name: 'Simple Google reCaptcha - test'
+type: module
+description: 'Support module for simple recaptcha testing.'
+package: 'Simple reCAPTCHA testing'
+core_version_requirement: ^10.2|^11.0
+dependencies:
+  - drupal:file
+
+# Information added by Drupal.org packaging script on 2024-12-20
+version: '8.x-1.0-beta9'
+project: 'simple_recaptcha'
+datestamp: 1734698738

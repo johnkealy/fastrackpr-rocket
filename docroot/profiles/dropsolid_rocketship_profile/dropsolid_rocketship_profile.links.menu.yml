@@ -1,0 +1,5 @@
+dropsolid_rocketship_profile.block_content_collection:
+  title: Blocks
+  route_name: entity.block_content.collection
+  parent: system.admin_content
+  weight: 0

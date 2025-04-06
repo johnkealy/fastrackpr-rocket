@@ -1,0 +1,5 @@
+ignore:
+  - '/src/StarterKit.php'
+  - '/rocketship_theme_starter.starterkit.yml'
+no_edit: []
+no_rename: []

@@ -1,0 +1,175 @@
+diff --git a/config/install/seckit.settings.yml b/config/install/seckit.settings.yml
+index 65618dd..661a175 100644
+--- a/config/install/seckit.settings.yml
++++ b/config/install/seckit.settings.yml
+@@ -45,6 +45,9 @@ seckit_ct:
+ seckit_fp:
+   feature_policy: FALSE
+   feature_policy_policy: ''
++seckit_pp:
++  permissions_policy: FALSE
++  permissions_policy_policy: ''
+ seckit_various:
+   from_origin: FALSE
+   from_origin_destination: same
+diff --git a/config/schema/seckit.schema.yml b/config/schema/seckit.schema.yml
+index 40d060a..244cad5 100644
+--- a/config/schema/seckit.schema.yml
++++ b/config/schema/seckit.schema.yml
+@@ -155,6 +155,16 @@ seckit.settings:
+         feature_policy_policy:
+           type: string
+           label: 'Policy'
++    seckit_pp:
++      type: mapping
++      label: 'Feature policy'
++      mapping:
++        permissions_policy:
++          type: boolean
++          label: 'Permissions policy'
++        permissions_policy_policy:
++          type: string
++          label: 'Policy'
+     seckit_various:
+       type: mapping
+       label: 'Various'
+diff --git a/src/EventSubscriber/SecKitEventSubscriber.php b/src/EventSubscriber/SecKitEventSubscriber.php
+index ab98f92..0f4e068 100644
+--- a/src/EventSubscriber/SecKitEventSubscriber.php
++++ b/src/EventSubscriber/SecKitEventSubscriber.php
+@@ -111,6 +111,9 @@ class SecKitEventSubscriber implements EventSubscriberInterface {
+     if ($this->config->get('seckit_fp.feature_policy')) {
+       $this->seckitFeaturePolicy();
+     }
++    if ($this->config->get('seckit_pp.permissions_policy')) {
++      $this->seckitPermissionsPolicy();
++    }
+ 
+     // Always call this (regardless of the setting) since if it's disabled it
+     // may be necessary to actively disable the core's clickjacking defense.
+@@ -503,4 +506,16 @@ EOT;
+     $this->response->headers->set('Feature-Policy', $header);
+   }
+ 
++  /**
++   * Sends Permissions-Policy HTTP response header.
++   *
++   * Implementation is based on specification draft available
++   * at https://www.w3.org/TR/permissions-policy-1/.
++   */
++  public function seckitPermissionsPolicy() {
++    $header[] = $this->config->get('seckit_pp.permissions_policy_policy');
++
++    $this->response->headers->set('Permissions-Policy', $header);
++  }
++
+ }
+diff --git a/src/Form/SecKitSettingsForm.php b/src/Form/SecKitSettingsForm.php
+index f908077..3a08f38 100644
+--- a/src/Form/SecKitSettingsForm.php
++++ b/src/Form/SecKitSettingsForm.php
+@@ -592,6 +592,7 @@ class SecKitSettingsForm extends ConfigFormBase {
+     $args = [
+       ':feature-policy_docs' => 'https://developers.google.com/web/updates/2018/06/feature-policy',
+       '@feature-policy_docs' => "Google's developer documentation",
++      ':permissions-policy_support' => 'https://caniuse.com/mdn-http_headers_permissions-policy',
+     ];
+ 
+     // Main fieldset for Feature-Policy.
+@@ -608,7 +609,7 @@ class SecKitSettingsForm extends ConfigFormBase {
+       '#type' => 'checkbox',
+       '#title' => $this->t('Feature policy'),
+       '#default_value' => $config->get('seckit_fp.feature_policy'),
+-      '#description' => $this->t('Enable the Feature-Policy header.'),
++      '#description' => $this->t('Enable the Feature-Policy header.') . ' ' . $this->t('Permissions Policy is defined by W3C draft, but use this too for <a href=":permissions-policy_support">further browser support</a>.', $args),
+     ];
+ 
+     $form['seckit_fp']['feature_policy_policy'] = [
+@@ -620,6 +621,37 @@ class SecKitSettingsForm extends ConfigFormBase {
+       '#description' => $this->t('Specify the policy to be sent out with Feature-Policy headers.'),
+     ];
+ 
++    $args = [
++      ':Permissions-Policy_docs' => 'https://www.chromestatus.com/feature/5745992911552512',
++      '@Permissions-Policy_docs' => "Chrome developer documentation",
++    ];
++
++    // Main fieldset for Permissions-Policy.
++    $form['seckit_pp'] = [
++      '#type' => 'details',
++      '#title' => $this->t('Permissions policy'),
++      '#collapsible' => TRUE,
++      '#tree' => TRUE,
++      '#open' => !empty($config->get('seckit_pp.permissions_policy')),
++      '#description' => $this->t('Allows configuration of the Permissions-Policy header to selectively enable, disable, and modify the behavior of certain APIs and web features in the browser. See <a href=":Permissions-Policy_docs">@Permissions-Policy_docs</a>.', $args),
++    ];
++
++    $form['seckit_pp']['permissions_policy'] = [
++      '#type' => 'checkbox',
++      '#title' => $this->t('Permissions policy'),
++      '#default_value' => $config->get('seckit_pp.permissions_policy'),
++      '#description' => $this->t('Enable the Permissions-Policy header.'),
++    ];
++
++    $form['seckit_pp']['permissions_policy_policy'] = [
++      '#type' => 'textfield',
++      '#title' => $this->t('Policy'),
++      '#default_value' => $config->get('seckit_pp.permissions_policy_policy'),
++      '#size' => 90,
++      '#maxlength' => 700,
++      '#description' => $this->t('Specify the policy to be sent out with Permissions-Policy headers.'),
++    ];
++
+     // Main fieldset for various.
+     $form['seckit_various'] = [
+       '#type' => 'details',
+diff --git a/tests/src/Functional/SecKitTestCaseTest.php b/tests/src/Functional/SecKitTestCaseTest.php
+index e3815fa..793c85b 100644
+--- a/tests/src/Functional/SecKitTestCaseTest.php
++++ b/tests/src/Functional/SecKitTestCaseTest.php
+@@ -636,7 +636,7 @@ EOT;
+   }
+ 
+   /**
+-   * Tests enabled feature-policy.
++   * Tests enabled Permissions-Policy.
+    */
+   public function testEnabledFeaturePolicy() {
+     $form = [
+@@ -649,6 +649,36 @@ EOT;
+     $this->assertSession()->responseHeaderEquals('Feature-Policy', $expected);
+   }
+ 
++  /**
++   * Tests disabled Permissions-Policy.
++   */
++  public function testDisabledPermissionsPolicy() {
++    $form['seckit_pp[permissions_policy]'] = FALSE;
++    $this->drupalGet('admin/config/system/seckit');
++    $this->submitForm($form, t('Save configuration'));
++    // This might be not null, because Drupal core set inherit-cohort if empty. See https://www.drupal.org/node/3320787
++    if (version_compare(\Drupal::VERSION, '9.5', '<')) {
++      $this->assertSession()->responseHeaderEquals('Permissions-Policy', 'inherit-cohort=()');
++    }
++    else {
++      $this->assertSession()->responseHeaderEquals('Permissions-Policy', NULL);
++    }
++  }
++
++  /**
++   * Tests enabled Permissions-Policy.
++   */
++  public function testEnabledPermissionsPolicy() {
++    $form = [
++      'seckit_pp[permissions_policy]' => TRUE,
++      'seckit_pp[permissions_policy_policy]' => "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
++    ];
++    $this->drupalGet('admin/config/system/seckit');
++    $this->submitForm($form, t('Save configuration'));
++    $expected = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
++    $this->assertSession()->responseHeaderEquals('Permissions-Policy', $expected);
++  }
++
+   /**
+    * Adds an origin to requests if $this->originHeader is set.
+    *

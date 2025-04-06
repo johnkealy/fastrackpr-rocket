@@ -1,0 +1,56 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: testimonial.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb-testimonial {
+  --_test-img-size: #{rem(100)};
+  --_test-quote-size: #{rem(40)};
+  --_test-quote-gap: var(--gap-xxs);
+
+  .field-cb-media {
+    img {
+      height: var(--_test-img-size);
+      width: var(--_test-img-size);
+      margin-inline: auto;
+      border-radius: 100%;
+    }
+  }
+
+  .field-cb-text {
+    position: relative;
+    padding-inline: calc(var(--_test-quote-size) + var(--_test-quote-gap));
+    @include icon((
+      icon: quote-left,
+      color: hsl(var(--clr-list-item)),
+      size: var(--_test-quote-size),
+      position: absolute,
+      top: rem(-20),
+      left: 0,
+    ));
+  }
+}
+
+.cb__content--testimonial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm) 0;
+  max-width: var(--max-width-inner);
+  margin-inline: auto;
+  text-align: center;
+}
+
+.cb--testimonial__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--gap-xxs);
+  font-weight: var(--fw-bold);
+}

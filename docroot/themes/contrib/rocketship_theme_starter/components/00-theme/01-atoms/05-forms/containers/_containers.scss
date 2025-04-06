@@ -1,0 +1,25 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Forms: containers (wrappers for buttons and such)
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// ** wraps our submit & other buttons on a form
+.main .form-actions {
+  // ** buttons under each other
+  display: flex;
+  gap: var(--gap-sm);
+  flex-direction: column;
+  flex-wrap: wrap;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  // ** buttons next to each other
+  .main .form-actions {
+    flex-direction: row;
+  }
+}

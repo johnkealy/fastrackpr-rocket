@@ -1,0 +1,68 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Headings: helpers
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+
+// * Mixins to manage & share the styling
+// =============================================================================
+
+@mixin headings {
+  font-family: var(--ff-heading);
+  font-weight: var(--fw-medium);
+
+  a,
+  a:visited {
+    text-decoration: none;
+    color: hsl(var(--clr-link));
+  }
+
+  a:hover {
+    text-decoration: underline;
+    color: hsl(var(--clr-link));
+  }
+}
+
+@mixin h1 {
+  @include headings;
+  margin: 0 0 var(--gap-md) 0;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  color: hsl(var(--clr-heading));
+}
+
+@mixin h2 {
+  @include headings;
+  margin: 0 0 var(--gap-sm) 0;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  color: hsl(var(--clr-heading));
+}
+
+@mixin h3 {
+  @include headings;
+  margin: 0 0 var(--gap-sm) 0;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  color: hsl(var(--clr-heading));
+}
+
+@mixin h4 {
+  @include headings;
+  margin: 0 0 var(--gap-sm) 0;
+  font-size: var(--fs-h4);
+  line-height: var(--lh-h4);
+  color: hsl(var(--clr-heading));
+}
+
+@mixin h5 {
+  margin: 0 0 var(--gap-xs) 0;
+  font-size: var(--fs-h5);
+  line-height: var(--lh-h6);
+  color: hsl(var(--clr-base));
+}
+
+@mixin h6 {
+  @include h5;
+}

@@ -1,0 +1,21 @@
+{#
+/**
+ * This is strictly an example file to demonstrate markup in Storybook.
+ * It is not intended to be included in any other component.
+ */
+#}
+{% embed "@rocketship-theme-starter-organisms/footer/doormat/_doormat.twig" %}
+  {% block doormat %}
+    {# add branding #}
+    {% include "@rocketship-theme-starter-molecules/branding/styleguide/branding-block.twig" with {
+      label: branding.label,
+      heading_id: branding.heading_id,
+      heading_level: branding.heading_level,
+      configuration: branding.configuration,
+      heading_level: branding.heading_level,
+      bem_block_modifiers: branding.bem_block_modifiers,
+      fields: branding.fields,
+    } %}
+  {% endblock doormat %}
+{% endembed %}
+

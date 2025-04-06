@@ -1,0 +1,11 @@
+name: Layout Builder Extra Templates
+description: Adds additional template suggestions for custom and layout builder blocks.
+type: module
+core_version_requirement: ^8 || ^9 || ^10 || ^11
+dependencies:
+  - drupal:layout_builder
+
+# Information added by Drupal.org packaging script on 2025-03-26
+version: '8.x-1.0-rc4'
+project: 'layout_builder_extra_templates'
+datestamp: 1743032224

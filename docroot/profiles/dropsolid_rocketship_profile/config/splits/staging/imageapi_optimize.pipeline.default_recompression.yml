@@ -1,0 +1,34 @@
+status: true
+dependencies:
+  module:
+    - imageapi_optimize_binaries
+name: default_recompression
+label: 'default recompression'
+processors:
+  5ce6caf7-74d3-4ae1-941b-8b73697e938c:
+    uuid: 5ce6caf7-74d3-4ae1-941b-8b73697e938c
+    id: optipng
+    weight: -8
+    data:
+      manual_executable_path: /usr/bin/optipng
+      level: 5
+      interlace: false
+  3fce21af-31f8-4e45-b4b3-8434469688aa:
+    uuid: 3fce21af-31f8-4e45-b4b3-8434469688aa
+    id: jpegoptim
+    weight: -9
+    data:
+      manual_executable_path: ''
+      progressive: null
+      quality: 90
+      size: null
+  d877306e-fb29-432a-a214-f1174d35a82c:
+    uuid: d877306e-fb29-432a-a214-f1174d35a82c
+    id: pngquant
+    weight: -10
+    data:
+      manual_executable_path: ''
+      speed: 10
+      quality:
+        min: 90
+        max: 99

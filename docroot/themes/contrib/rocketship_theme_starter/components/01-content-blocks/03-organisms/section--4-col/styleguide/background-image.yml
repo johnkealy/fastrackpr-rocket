@@ -1,0 +1,35 @@
+
+reference:
+  media_bundle: image
+  media_published: true
+  view_mode: layout_builder_background
+  field:
+    label_hidden: true
+    field_name: field_media_image
+    field_type: image
+    bem_field_extra:
+      - 'blazy'
+      - 'blazy--field'
+      - 'blazy--field-media-image'
+    field_attributes:
+      'data-blazy': ''
+    settings:
+      lazy: true
+      use_loading: true
+    blazy_bem_modifiers:
+      - 'bundle--image'
+      - blazy
+      - image
+      - loading
+    image_alt: 'A 1 by 4 image'
+    image_sizes: '100vw'
+    image_bem_extra:
+      - 'media__image'
+      - 'media__element'
+      - 'b-lazy'
+    output_image_tag: true
+    image_attributes:
+      src: 'https://picsum.photos/320/60'
+      srcset: 'https://picsum.photos/320/60 320w, https://picsum.photos/480/120 480w, https://picsum.photos/640/160 640w, https://picsum.photos/800/200 800w, https://picsum.photos/960/235 960w, https://picsum.photos/1120/280 1120w, https://picsum.photos/1280/320 1280w, https://picsum.photos/1440/360 1440w, https://picsum.photos/1600/400 1600w'
+      loading: "lazy"
+

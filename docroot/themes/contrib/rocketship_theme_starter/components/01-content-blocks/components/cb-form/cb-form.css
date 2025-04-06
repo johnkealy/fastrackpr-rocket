@@ -1,0 +1,12 @@
+/**
+ * Square mixin
+ *
+ * @param [Number] $dimensions = the height and width of the element
+ */
+/* stylelint-disable */
+/* stylelint-enable */
+/* stylelint-disable */
+/* stylelint-enable */
+.layout--1-col .cb__intro--form {
+  max-width: var(--max-width-inner);
+}

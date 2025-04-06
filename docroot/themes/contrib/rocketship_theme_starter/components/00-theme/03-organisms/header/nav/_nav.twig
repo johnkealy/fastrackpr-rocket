@@ -1,0 +1,46 @@
+{#
+  Menus that you also want to be in mobile navigation go here.
+#}
+<div class="wrapper--navigation">
+  <button id="toggle-expand" class="navigation__toggle-expand" aria-controls="navigation" type="button">
+    <span class="navigation__toggle-expand__group navigation__toggle-expand__group--open" aria-hidden="false">
+      <span class="navigation__toggle-expand__icon navigation__toggle-expand__icon--open"></span>
+      <span class="navigation__toggle-expand__text navigation__toggle-expand__text--open visually-hidden">
+        {{- 'Show menu'|t -}}
+      </span>
+    </span>
+    <span class="navigation__toggle-expand__group navigation__toggle-expand__group--closed" aria-hidden="true">
+      <span class="navigation__toggle-expand__icon navigation__toggle-expand__icon--closed"></span>
+      <span class="navigation__toggle-expand__text navigation__toggle-expand__text--closed visually-hidden">
+        {{- 'Hide menu'|t -}}
+      </span>
+    </span>
+  </button>
+
+  <div id="navigation" class="wrapper--navigation__content" aria-labelledby="toggle-expand">
+    {% block nav_content %}
+      {#
+        Render the navigations and other elements
+        via organisms/header/header--primary component.
+      #}
+      {% if nav_primary %}
+        <div class="nav-section nav-section--primary">
+          {% block nav_primary %}
+            {{ nav_primary }}
+          {% endblock nav_primary %}
+        </div>
+      {% endif %}
+      {#
+        Secondary menu goes here, or social media links in some cases or if
+        you need to render blocks only visible on Mobile for example.
+      #}
+      {% if nav_secondary %}
+        <div class="nav-section nav-section--secondary">
+          {% block nav_secondary %}
+            {{ nav_secondary }}
+          {% endblock nav_secondary %}
+        </div>
+      {% endif %}
+    {% endblock nav_content %}
+  </div>
+</div>

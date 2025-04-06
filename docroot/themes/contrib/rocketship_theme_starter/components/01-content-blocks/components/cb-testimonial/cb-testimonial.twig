@@ -1,0 +1,46 @@
+{%- set extraClasses = [
+  media ? 'has-image',
+] -%}
+<div {{ attributes.addClass(
+  'cb',
+  'cb-' ~ component,
+  classes,
+  extraClasses,
+  'block',
+  'block-layout_builder',
+) }}>
+  {{ title_suffix }}
+  {% block cb_body %}
+    <div class="cb__inner cb__inner--{{ component }}">
+      {% block cb_intro %}
+        {% if media %}
+          <div class="cb__intro cb__intro--{{ component }}">
+            {{ media }}
+          </div>
+        {% endif %}
+      {% endblock cb_intro %}
+      {% block cb_content %}
+        {% if content %}
+          <div class="cb__content cb__content--{{ component }}">
+            {{ content }}
+            {% if name or extra_line %}
+              <div class="cb--{{ component }}__meta">
+                {{ name }}
+                {% if name and extra_line %}
+                  <span class="cb--{{ component }}__name-seperator">-</span>
+                {% endif %}
+                {{ extra_line }}
+              </div>
+            {% endif %}
+            {% if link['#is_multiple'] is defined %}
+              {% for linkItem in link['#items'].getValue %}
+                {% set linkAttributes = create_attribute(linkItem['options'].attributes) %}
+                {{ link(linkItem['title'], linkItem['uri'], linkAttributes.addClass('link--more')) }}
+              {% endfor %}
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endblock cb_content %}
+    </div>
+  {% endblock cb_body %}
+</div>

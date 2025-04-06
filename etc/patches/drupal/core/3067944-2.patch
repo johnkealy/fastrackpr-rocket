@@ -1,0 +1,14 @@
+diff --git a/core/modules/path/path.module b/core/modules/path/path.module
+index f344c74b6e..140f8b54f8 100644
+--- a/core/modules/path/path.module
++++ b/core/modules/path/path.module
+@@ -41,7 +41,8 @@ function path_help($route_name, RouteMatchInterface $route_match) {
+  * Implements hook_entity_base_field_info().
+  */
+ function path_entity_base_field_info(EntityTypeInterface $entity_type) {
+-  if (in_array($entity_type->id(), ['taxonomy_term', 'node', 'media'], TRUE)) {
++  if (in_array($entity_type->id(), ['taxonomy_term', 'node'], TRUE) ||
++    ($entity_type->id() === 'media' && \Drupal::configFactory()->get('media.settings')->get('standalone_url'))) {
+     $fields['path'] = BaseFieldDefinition::create('path')
+       ->setLabel(t('URL alias'))
+       ->setTranslatable(TRUE)

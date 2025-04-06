@@ -1,0 +1,52 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Main menu
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+.menu__link--main {
+  --_menu__link-padding: var(--gap-xs) 0;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: phone and tablet
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm-max {
+  .menu--main {
+    --_expand-icon-height: #{rem(42)};
+  }
+
+  .menu--main.menu--sub {
+    &.js-open {
+      padding: var(--gap-xs) 0;
+    }
+  }
+
+  .menu__link--main.menu__link--sub {
+    --_menu__link-padding: var(--gap-xs) var(--gap-md);
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop and bigger
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  .menu--main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-md);
+  }
+
+  .menu--main.menu--sub {
+    &.js-open,
+    .menu__item--with-sub:hover & {
+      padding: var(--gap-xxs) 0;
+    }
+  }
+
+  .menu__link--main.menu__link--sub {
+    --_menu__link-padding: var(--gap-xxs) var(--gap-xs);
+  }
+}

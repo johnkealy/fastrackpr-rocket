@@ -1,0 +1,25 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Header top
+// *
+// * Load all the styling + the structural CSS
+// * for the header top in the right order and breakpoints
+// * You can change breakpoints to have mobile styling for wider screens
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: phone and tablet
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm-max {
+  //
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop and bigger
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  //
+}

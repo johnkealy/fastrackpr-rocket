@@ -1,0 +1,28 @@
+/* stylelint-disable */
+@use "sass:math";
+@use "sass:list";
+
+@import "00-base/00-config/00-variables/vars-00-base";
+@import "00-base/01-helpers/02-mixins/_mixins-iconfont";
+
+$iconNames: map-keys($iconMapping);
+
+%iconfont {
+  @include icon(());
+}
+
+@each $iconName in $iconNames {
+  .icon-#{$iconName} {
+    @extend %iconfont;
+  }
+}
+
+@each $name, $value in $iconMapping {
+  .icon-#{$name} {
+    &:before {
+      content: "#{$value}";
+    }
+  }
+}
+
+/* stylelint-enable */

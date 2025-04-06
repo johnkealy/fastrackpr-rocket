@@ -1,0 +1,157 @@
+diff --git a/core/modules/media/src/MediaAccessControlHandler.php b/core/modules/media/src/MediaAccessControlHandler.php
+index 4197d07968..771e5b4dbf 100644
+--- a/core/modules/media/src/MediaAccessControlHandler.php
++++ b/core/modules/media/src/MediaAccessControlHandler.php
+@@ -119,6 +119,12 @@ protected function checkAccess(EntityInterface $entity, $operation, AccountInter
+         }
+         return AccessResult::neutral("The following permissions are required: 'delete any media' OR 'delete own media' OR '$type: delete any media' OR '$type: delete own media'.")->cachePerPermissions();
+ 
++      case 'translate':
++        if ($account->hasPermission('translate ' . $type . ' media')) {
++          return AccessResult::allowed()->cachePerPermissions();
++        }
++        return AccessResult::neutral("The following permissions are required: 'translate $type media'.")->cachePerPermissions();
++
+       case 'view all revisions':
+       case 'view revision':
+         if ($account->hasPermission('view any ' . $type . ' media revisions') || $account->hasPermission("view all media revisions")) {
+diff --git a/core/modules/media_library/media_library.module b/core/modules/media_library/media_library.module
+index b42ca768e7..2fbccc530b 100644
+--- a/core/modules/media_library/media_library.module
++++ b/core/modules/media_library/media_library.module
+@@ -232,9 +232,19 @@ function media_library_views_post_render(ViewExecutable $view, &$output, CachePl
+ function media_library_form_media_form_alter(array &$form, FormStateInterface $form_state) {
+   // Make the media edit form work inside modal dialogs.
+   $form_object = $form_state->getFormObject();
+-  if (is_object($form_object) && $form_object->getOperation() === 'edit') {
+-    $wrapper_format = \Drupal::request()->query->get(MainContentViewSubscriber::WRAPPER_FORMAT);
++  $request = \Drupal::request();
++  $mediaLibraryState = NULL;
+ 
++  if ($request->get('media_library_opener_id')) {
++    $mediaLibraryState = MediaLibraryState::fromRequest($request);
++  }
++
++  if (empty($mediaLibraryState)) {
++    return;
++  }
++
++  if (is_object($form_object) && in_array($form_object->getOperation(), ['edit', 'add', 'translate'])) {
++    $wrapper_format = $request->query->get(MainContentViewSubscriber::WRAPPER_FORMAT);
+     // Make sure that the media library opener is actually the 'field_widget'.
+     // Get the request uri for the $form.
+     $request_stack = \Drupal::service('request_stack');
+@@ -297,6 +307,9 @@ function media_library_media_form_ajax_submit(array &$form, FormStateInterface $
+     $response->addCommand(new CloseModalDialogCommand());
+     $response->addCommand(new ReplaceCommand('.selected-media', $html));
+ 
++    // If translation done, remove translation-in-progress button.
++    $response->addCommand(new ReplaceCommand('.translation-in-progress', ''));
++
+     // Remove status messages when editing medias.
+     \Drupal::messenger()->deleteByType(MessengerInterface::TYPE_STATUS);
+   }
+diff --git a/core/modules/media_library/src/Plugin/Field/FieldWidget/MediaLibraryWidget.php b/core/modules/media_library/src/Plugin/Field/FieldWidget/MediaLibraryWidget.php
+index 25932ae55e..6947b10052 100644
+--- a/core/modules/media_library/src/Plugin/Field/FieldWidget/MediaLibraryWidget.php
++++ b/core/modules/media_library/src/Plugin/Field/FieldWidget/MediaLibraryWidget.php
+@@ -17,6 +17,8 @@
+ use Drupal\Core\Field\FieldStorageDefinitionInterface;
+ use Drupal\Core\Field\WidgetBase;
+ use Drupal\Core\Form\FormStateInterface;
++use Drupal\Core\Language\LanguageInterface;
++use Drupal\Core\Language\LanguageManagerInterface;
+ use Drupal\Core\Security\TrustedCallbackInterface;
+ use Drupal\Core\Session\AccountInterface;
+ use Drupal\Core\StringTranslation\TranslatableMarkup;
+@@ -67,6 +69,13 @@ class MediaLibraryWidget extends WidgetBase implements TrustedCallbackInterface
+    */
+   protected $moduleHandler;
+ 
++  /**
++   * Language Manager.
++   *
++   * @var \Drupal\Core\Language\LanguageManagerInterface
++   */
++  protected $languageManager;
++
+   /**
+    * Constructs a MediaLibraryWidget widget.
+    *
+@@ -86,12 +95,15 @@ class MediaLibraryWidget extends WidgetBase implements TrustedCallbackInterface
+    *   The current active user.
+    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+    *   The module handler.
++   * @param \Drupal\Core\Language\LanguageManagerInterface $languageManager
++   *   The language manager.
+    */
+-  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, EntityTypeManagerInterface $entity_type_manager, AccountInterface $current_user, ModuleHandlerInterface $module_handler) {
++  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, EntityTypeManagerInterface $entity_type_manager, AccountInterface $current_user, ModuleHandlerInterface $module_handler, LanguageManagerInterface $languageManager) {
+     parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $third_party_settings);
+     $this->entityTypeManager = $entity_type_manager;
+     $this->currentUser = $current_user;
+     $this->moduleHandler = $module_handler;
++    $this->languageManager = $languageManager;
+   }
+ 
+   /**
+@@ -106,7 +118,8 @@ public static function create(ContainerInterface $container, array $configuratio
+       $configuration['third_party_settings'],
+       $container->get('entity_type.manager'),
+       $container->get('current_user'),
+-      $container->get('module_handler')
++      $container->get('module_handler'),
++      $container->get('language_manager')
+     );
+   }
+ 
+@@ -460,6 +473,7 @@ public function formElement(FieldItemListInterface $items, $delta, array $elemen
+         '#attributes' => [
+           'class' => [
+             'js-media-library-item',
++            'flex-direction-column',
+           ],
+           // Add the tabindex '-1' to allow the focus to be shifted to the next
+           // media item when an item is removed. We set focus to the container
+@@ -501,7 +515,7 @@ public function formElement(FieldItemListInterface $items, $delta, array $elemen
+           '#attributes' => [
+             'aria-label' => $media_item->access('view label') ? $this->t('Edit @label', ['@label' => $media_item->label()]) : $this->t('Edit media'),
+             'class' => ['edit-media', 'use-ajax'],
+-            'href' => $media_item->toUrl('edit-form', ['query' => $state->all()])->toString(),
++            'href' => $media_item->toUrl('edit-form', ['query' => $state->all(), 'language' => $entity->language()])->toString(),
+             'data-dialog-type' => 'modal',
+             'data-dialog-options' => '{"width":"80%"}',
+           ],
+@@ -525,6 +539,32 @@ public function formElement(FieldItemListInterface $items, $delta, array $elemen
+           ],
+         ],
+       ];
++      if (!$media_item->hasTranslation($this->languageManager->getCurrentLanguage(LanguageInterface::TYPE_URL)->getId())) {
++        $translateUrl = Url::fromRoute('entity.media.content_translation_add',
++          [
++            'media' => $media_item->id(),
++            $entity->getEntityTypeId() => $entity->id(),
++            'source' => $media_item->language()->getId(),
++            'target' => $this->languageManager->getCurrentLanguage(LanguageInterface::TYPE_URL)->getId(),
++          ],
++          [
++            'query' => $state->all(),
++          ]
++        );
++        $element['selection'][$delta]['translate_button'] = [
++          '#type' => 'button',
++          '#value' => $this->t('Translate'),
++          '#weight' => -5,
++          '#access' => $media_item->access('translate'),
++          '#attributes' => [
++            'type' => 'button',
++            'class' => ['edit-media', 'use-ajax', 'translate-media'],
++            'href' => $translateUrl->toString(),
++            'data-dialog-type' => 'modal',
++            'data-dialog-options' => '{"width":"80%"}',
++          ],
++        ];
++      }
+     }
+ 
+     // Add a button that will load the Media library in a modal using AJAX.

@@ -1,0 +1,10 @@
+{
+  "name": "drupal/rocketship_theme_starter",
+  "require": {
+    "drupal/components": "*",
+    "drupal/core": "^10.3 | ^11",
+    "drupal/unified_twig_ext": "*"
+  },
+  "type": "drupal-theme",
+  "description": "Component-based Drupal theme for use with Dropsolid Rocketship install profile, modules and other components."
+}

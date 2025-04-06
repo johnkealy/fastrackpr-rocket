@@ -1,0 +1,256 @@
+{
+    "name": "dropsolid/rocketship",
+    "description": "Dropsolid Rocketship is a distribution that enables small to mid-market business to profit from an optimal start when getting your feet wet in Drupal.",
+    "type": "project",
+    "license": "GPL-2.0+",
+    "authors": [
+        {
+            "name": "Maarten Steurs",
+            "homepage": "https://www.drupal.org/u/webfordreams",
+            "role": "Maintainer"
+        },
+        {
+            "name": "Oleksandr Kuzava",
+            "homepage": "https://www.drupal.org/u/nginex",
+            "role": "Maintainer"
+        },
+        {
+            "name": "Mattias Michaux",
+            "homepage": "https://www.drupal.org/u/mollux",
+            "role": "Maintainer"
+        },
+        {
+            "name": "Nick Vanpraet",
+            "homepage": "https://www.drupal.org/u/grayle",
+            "role": "Maintainer"
+        }
+    ],
+    "require": {
+        "composer-plugin-api": "^2.0",
+        "composer/installers": "^1.12",
+        "cweagans/composer-patches": "^1.7",
+        "drupal/core-composer-scaffold": "^10.4",
+        "drupal/core-project-message": "^10.4",
+        "drupal/core-recommended": "^10.4",
+        "drupal/core-vendor-hardening": "^10.4",
+        "drupal/dropsolid_rocketship_profile": "^6.2",
+        "drupal/rocketship_theme_starter": "^3.0",
+        "drush/drush": "^12.4",
+        "harvesthq/chosen": "1.8.7",
+        "imakewebthings/waypoints": "^4.0.1",
+        "jackmoore/colorbox": "^1.6",
+        "kenwheeler/slick": "1.8.1",
+        "topfloor/composer-cleanup-vcs-dirs": "^1.1",
+        "vardot/blazy": "^1.8"
+    },
+    "require-dev": {
+        "drupal/core-dev": "^10.4",
+        "drupal/twig_vardumper": "^3.1",
+        "drupal/twig_xdebug": "^1.2"
+    },
+    "minimum-stability": "beta",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "autoloader-suffix": "Drupal8",
+        "allow-plugins": {
+            "composer/installers": true,
+            "cweagans/composer-patches": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "drupal/console-extend-plugin": true,
+            "drupal/core-composer-scaffold": true,
+            "drupal/core-project-message": true,
+            "drupal/core-vendor-hardening": true,
+            "php-http/discovery": true,
+            "phpstan/extension-installer": true,
+            "tbachert/spi": true,
+            "topfloor/composer-cleanup-vcs-dirs": true
+        }
+    },
+    "extra": {
+        "patches": {
+            "drupal/core": {
+                "CUSTOM - Change title to label for inline blocks and other UX improvements": "etc/patches/drupal/core/custom-inlineblocklabelux.patch",
+                "CUSTOM - Block fallback preview change": "etc/patches/drupal/core/custom-layout_builder.ui.patch",
+                "CUSTOM - Hide profiles": "etc/patches/drupal/core/custom-hide-install-profiles.patch",
+                "CUSTOM - Lock langauge during installation": "etc/patches/drupal/core/custom-install-language-selector.patch",
+                "https://drupal.org/i/2900248 - Exposed term filter is not updated when terms are added, deleted, or rearranged": "etc/patches/drupal/core/2900248-53.patch",
+                "https://drupal.org/i/3003300 - PECL YAML errors at valid YAML file which only contains comments": "etc/patches/drupal/core/3003300-8.patch",
+                "https://drupal.org/i/3009016 - Incorrect translation status for duplicated entities": "etc/patches/drupal/core/3009016-17.patch",
+                "https://drupal.org/i/3067944 - Media entities should not have path alias by default": "etc/patches/drupal/core/3067944-2.patch",
+                "https://drupal.org/i/3008292 - Upload via Media Library field widget does not take all upload validators in account": "etc/patches/drupal/core/3008292-105.patch",
+                "https://drupal.org/i/3031637 - Allow empty selection to allow all bundles in reference field": "etc/patches/drupal/core/3031637-7.patch",
+                "https://drupal.org/i/2946333 - Allow synced Layout override Translations: translating labels and inline blocks": "etc/patches/drupal/core/2946333-mr8480.patch",
+                "https://drupal.org/i/3044993 - Allow synced Layout default Translations: translating labels and inline blocks (depends on override patch above)": "etc/patches/drupal/core/3044993-79.patch",
+                "https://drupal.org/i/3180702 - Export block UUID with custom Layout Builder blocks": "etc/patches/drupal/core/3180702-54.patch",
+                "https://drupal.org/i/2847425 - #states not affecting visibility/requirement of managed_file": "etc/patches/drupal/core/2847425-65.patch",
+                "https://drupal.org/i/2466553 - Untranslated menu items are displayed in menus": "etc/patches/drupal/core/2466553-175.patch",
+                "https://drupal.org/i/3337924 - Temp fix for: block_content block derivatives do not scale to thousands of block_content entities": "etc/patches/drupal/core/3337924-8.patch",
+                "https://drupal.org/i/3339877 - Reorder Layout Builder sections: fix conflict with patch of #2946333": "etc/patches/drupal/core/3339877-on-top-of-2946333.patch",
+                "https://drupal.org/i/2985168 - Allow media items to be edited in a modal when using the field widget": "etc/patches/drupal/core/2985168-172.patch",
+                "https://drupal.org/i/3266293 - Media items translate items in modal": "etc/patches/drupal/core/3266293-23.patch"
+            },
+            "drupal/ckeditor": {
+                "https://drupal.org/i/3065095 - CKEditor native dialogs not clickable inside of jQuery UI dialogs": "etc/patches/drupal/ckeditor/3065095-71.patch"
+            },
+            "drupal/field_group": {
+                "https://drupal.org/i/2969051 - HTML5 Validation Prevents Submission in Tabs": "etc/patches/drupal/field_group/2969051-170.patch"
+            },
+            "drupal/focal_point": {
+                "https://drupal.org/i/2830678 - Limit image styles on preview page" : "etc/patches/drupal/focal_point/2830678-44.patch"
+            },
+            "drupal/layout_builder_at": {
+                "https://drupal.org/i/3204485 - Handle core synced translation": "etc/patches/drupal/layout_builder_at/3204485-2.patch",
+                "https://drupal.org/i/3211413 - Support block_uuid inline block configuration": "etc/patches/drupal/layout_builder_at/3211413-1.patch"
+            },
+            "drupal/layout_builder_modal": {
+                "https://drupal.org/i/3133695 - Incompatibility with layout_builder_st, contextual links broken": "etc/patches/drupal/layout_builder_modal/3133695-13.patch"
+            },
+            "drupal/linkit": {
+                "https://drupal.org/i/2886455 - Add support for multilanguage": "etc/patches/drupal/linkit/2886455-19.patch"
+            },
+            "drupal/purge": {
+                "https://drupal.org/i/3008776 - Give destruct service tags priority. Depends on related core patch": "etc/patches/drupal/purge/3008776-12.patch"
+            },
+            "drupal/search_api": {
+                "https://drupal.org/i/3035977 - Rendered HTML Output doesnt respect activeLanguage completely": "etc/patches/drupal/search_api/3035977-56.patch"
+            },
+            "drupal/seckit": {
+                "https://drupal.org/i/3185024 - Change Feature Policy to Permissions Policy (D8/D9)": "etc/patches/drupal/seckit/3185024-19.patch"
+            },
+            "drupal/video_embed_field": {
+                "https://drupal.org/i/3039873 - Allow creation of new Video Embed Field media entities using the Media Browser": "etc/patches/drupal/video_embed_field/3039873-32.patch",
+                "https://drupal.org/i/3441849 - Improve the video block accessibility": "etc/patches/drupal/video_embed_field/3441849-4.patch"
+            },
+            "topfloor/composer-cleanup-vcs-dirs": {
+                "Allow excludes": "https://patch-diff.githubusercontent.com/raw/VolantisDev/composer-cleanup-vcs-dirs/pull/4.diff"
+            }
+        },
+        "patches-ignore": [],
+        "composer-exit-on-patch-failure": true,
+        "patchLevel": {
+            "drupal/core": "-p2"
+        },
+        "enable-patching": true,
+        "installer-paths": {
+            "docroot/core": [
+                "type:drupal-core"
+            ],
+            "docroot/modules/contrib/{$name}": [
+                "type:drupal-module"
+            ],
+            "docroot/profiles/{$name}": [
+                "type:drupal-profile"
+            ],
+            "docroot/themes/contrib/{$name}": [
+                "type:drupal-theme"
+            ],
+            "docroot/modules/custom/{$name}": [
+                "type:drupal-custom-module"
+            ],
+            "docroot/themes/custom/{$name}": [
+                "type:drupal-custom-theme"
+            ],
+            "docroot/libraries/{$name}": [
+                "type:drupal-library"
+            ]
+        },
+        "drupal-scaffold": {
+            "locations": {
+                "web-root": "./docroot"
+            },
+            "file-mapping": {
+                "project-root/.gitignore": false,
+                "[web-root]/.csslintrc": false,
+                "[web-root]/.eslintignore": false,
+                "[web-root]/.eslintrc.json": false,
+                "[web-root]/.htaccess": false,
+                "[web-root]/example.gitignore": false,
+                "[web-root]/INSTALL.txt": false,
+                "[web-root]/README.md": false,
+                "[web-root]/README.txt": false,
+                "[web-root]/web.config": false,
+                "[web-root]/modules/README.txt": false,
+                "[web-root]/profiles/README.txt": false,
+                "[web-root]/sites/README.txt": false,
+                "[web-root]/sites/default/default.services.yml": false,
+                "[web-root]/sites/example.settings.local.php": false,
+                "[web-root]/sites/example.sites.php": false,
+                "[web-root]/themes/README.txt": false,
+                "[web-root]/robots.txt": {
+                    "append": "etc/scaffold-modifications/robots.txt.append",
+                    "prepend": "etc/scaffold-modifications/robots.txt.prepend"
+                }
+            },
+            "allowed-packages": [
+                "drupal/core"
+            ]
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Drupal\\Core\\Composer\\": "core/lib/Drupal/Core/Composer"
+        }
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "cp etc/.gitignore .gitignore"
+        ]
+    },
+    "repositories": [
+        {
+            "type": "package",
+            "package": {
+                "name": "kenwheeler/slick",
+                "version": "1.8.1",
+                "type": "drupal-library",
+                "dist": {
+                    "url": "https://github.com/kenwheeler/slick/archive/v1.8.1.zip",
+                    "type": "zip"
+                }
+            }
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "jackmoore/colorbox",
+                "version": "1.6.4",
+                "type": "drupal-library",
+                "dist": {
+                    "url": "https://github.com/jackmoore/colorbox/archive/1.x.zip",
+                    "type": "zip"
+                }
+            }
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "imakewebthings/waypoints",
+                "version": "4.0.1",
+                "type": "drupal-library",
+                "dist": {
+                    "url": "https://github.com/imakewebthings/waypoints/archive/master.zip",
+                    "type": "zip"
+                }
+            }
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "harvesthq/chosen",
+                "version": "1.8.7",
+                "type": "drupal-library",
+                "source": {
+                    "url": "https://github.com/harvesthq/chosen-package.git",
+                    "type": "git",
+                    "reference": "v1.8.7"
+                }
+            }
+        },
+        {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8"
+        }
+    ]
+}

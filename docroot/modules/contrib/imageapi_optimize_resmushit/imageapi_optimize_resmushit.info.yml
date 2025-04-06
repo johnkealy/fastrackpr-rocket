@@ -1,0 +1,12 @@
+name: Image Optimize - reSmush.it
+type: module
+package: Image Optimize
+description: 'Provide a reSmush.it optimizer for ImageAPI Optimize.'
+core_version_requirement: ^8 || ^9 || ^10
+dependencies:
+  - imageapi_optimize:imageapi_optimize
+
+# Information added by Drupal.org packaging script on 2024-09-28
+version: '2.0.0'
+project: 'imageapi_optimize_resmushit'
+datestamp: 1727505383

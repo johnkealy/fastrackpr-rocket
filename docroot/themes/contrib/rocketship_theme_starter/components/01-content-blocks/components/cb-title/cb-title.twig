@@ -1,0 +1,28 @@
+<div {{ attributes.addClass(
+  'cb',
+  'cb-' ~ component,
+  classes,
+  'block',
+  'block-layout_builder',
+) }}>
+  {{ title_suffix }}
+  {% block cb_body %}
+    <div class="cb__inner cb__inner--{{ component }}">
+      {% block cb_intro %}
+        {% if title or subtitle %}
+          <div class="cb__intro cb__intro--{{ component }}">
+            {{ title }}
+            {{ subtitle }}
+          </div>
+        {% endif %}
+      {% endblock cb_intro %}
+      {% block cb_content %}
+        {% if content %}
+          <div class="cb__content cb__content--{{ component }}">
+            {{ content }}
+          </div>
+        {% endif %}
+      {% endblock cb_content %}
+    </div>
+  {% endblock cb_body %}
+</div>

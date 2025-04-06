@@ -1,0 +1,60 @@
+/**
+ * Square mixin
+ *
+ * @param [Number] $dimensions = the height and width of the element
+ */
+/* stylelint-disable */
+/* stylelint-enable */
+/* stylelint-disable */
+/* stylelint-enable */
+.cb-testimonial {
+  --_test-img-size: 6.25rem;
+  --_test-quote-size: 2.5rem;
+  --_test-quote-gap: var(--gap-xxs);
+}
+.cb-testimonial .field-cb-media img {
+  height: var(--_test-img-size);
+  width: var(--_test-img-size);
+  margin-inline: auto;
+  border-radius: 100%;
+}
+.cb-testimonial .field-cb-text {
+  position: relative;
+  padding-inline: calc(var(--_test-quote-size) + var(--_test-quote-gap));
+}
+.cb-testimonial .field-cb-text:before {
+  content: "\e01a";
+  position: absolute;
+  top: -1.25rem;
+  left: 0;
+  font-family: "iconfont";
+  font-size: var(--_test-quote-size);
+  display: inline-flex;
+  font-weight: normal;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: middle;
+  color: hsl(var(--clr-list-item));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-style: normal;
+  font-variant: normal;
+  text-transform: none;
+}
+
+.cb__content--testimonial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm) 0;
+  max-width: var(--max-width-inner);
+  margin-inline: auto;
+  text-align: center;
+}
+
+.cb--testimonial__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--gap-xxs);
+  font-weight: var(--fw-bold);
+}

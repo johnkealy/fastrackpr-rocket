@@ -1,0 +1,182 @@
+diff --git a/composer.json b/composer.json
+index 9657ab7a6d764d34be6a1ce90ed6dcf61f46e45f..27ce8d0a38a0b58b9d42435d9aecf01f24f4a8d4 100644
+--- a/composer.json
++++ b/composer.json
+@@ -24,8 +24,8 @@
+     },
+     "license": "GPL-2.0-or-later",
+     "require-dev": {
+-        "drupal/language_fallback_fix": "@dev",
+-        "drupal/search_api_autocomplete": "@dev"
++        "drupal/language_fallback_fix": "1.x-dev@dev",
++        "drupal/search_api_autocomplete": "1.x-dev@dev"
+     },
+     "suggest": {
+         "drupal/facets": "Adds the ability to create faceted searches.",
+diff --git a/src/Language/StaticLanguageNegotiator.php b/src/Language/StaticLanguageNegotiator.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..dd7157084b33e91b13bf038363d88c0a2f0bbee0
+--- /dev/null
++++ b/src/Language/StaticLanguageNegotiator.php
+@@ -0,0 +1,51 @@
++<?php
++
++namespace Drupal\search_api\Language;
++
++use Drupal\language\LanguageNegotiator;
++
++/**
++ * Provides a language negotiator that allows setting the current language.
++ */
++class StaticLanguageNegotiator extends LanguageNegotiator {
++
++  /**
++   * The language code to return for all types.
++   *
++   * @var string|null
++   */
++  protected $languageCode;
++
++  /**
++   * {@inheritdoc}
++   */
++  public function initializeType($type) {
++    $language = NULL;
++    $method_id = static::METHOD_ID;
++    $availableLanguages = $this->languageManager->getLanguages();
++
++    if ($this->languageCode && isset($availableLanguages[$this->languageCode])) {
++      $language = $availableLanguages[$this->languageCode];
++    }
++    else {
++      // If no other language was found use the default one.
++      $language = $this->languageManager->getDefaultLanguage();
++    }
++
++    return [$method_id => $language];
++  }
++
++  /**
++   * Sets the language code to return for all types.
++   *
++   * @param string|null $langcode
++   *   The language code to set.
++   *
++   * @return $this
++   */
++  public function setLanguageCode($langcode) {
++    $this->languageCode = $langcode;
++    return $this;
++  }
++
++}
+diff --git a/src/Plugin/search_api/processor/RenderedItem.php b/src/Plugin/search_api/processor/RenderedItem.php
+index 22c3f1c295020be7c2e5e85f350ec60da77684f2..653b531ff742d1b3fd9ba0d93e4950169c6727e9 100644
+--- a/src/Plugin/search_api/processor/RenderedItem.php
++++ b/src/Plugin/search_api/processor/RenderedItem.php
+@@ -11,6 +11,7 @@ use Drupal\Core\Session\AccountSwitcherInterface;
+ use Drupal\Core\Session\UserSession;
+ use Drupal\Core\Url;
+ use Drupal\Core\Utility\Error;
++use Drupal\language\ConfigurableLanguageManagerInterface;
+ use Drupal\search_api\Datasource\DatasourceInterface;
+ use Drupal\search_api\Item\ItemInterface;
+ use Drupal\search_api\LoggerTrait;
+@@ -248,6 +249,39 @@ class RenderedItem extends ProcessorPluginBase {
+       }
+       $view_mode = (string) $datasource_config[$bundle];
+ 
++      // Switch out the language negotiator (if present) for our own
++      // implementation to make sure nested entities will also be rendered with
++      // the correct language.
++      $language_manager = \Drupal::languageManager();
++      if (\Drupal::moduleHandler()->moduleExists('language')
++          && $language_manager instanceof ConfigurableLanguageManagerInterface) {
++        // When the language_negotiator service is built, it will initialize
++        // the language manager, and it would replace the static negotiator we
++        // are setting up. Therefore, we need to make sure the
++        // language_negotiator service is built already. It might not have been
++        // built yet in certain cases, for example when indexing from the
++        // command line.
++        \Drupal::service('language_negotiator');
++        $langcode = $item->getLanguage();
++
++        $old_negotiator = $language_manager->getNegotiator();
++        /** @var \Drupal\search_api\Language\StaticLanguageNegotiator $negotiator */
++        $negotiator = \Drupal::service('search_api.static_language_negotiator');
++        $negotiator->setLanguageCode($langcode);
++        $language_manager->setNegotiator($negotiator);
++        $language_manager->reset();
++
++        // The string_translation service receives the current interface
++        // language as its default language at the beginning of a page request.
++        // We therefore have to temporarily override that, too, in order to get
++        // the correct language for any text in the rendered item that Drupal
++        // considers part of the interface.
++        // @see \Drupal\language\EventSubscriber\LanguageRequestSubscriber::setLanguageOverrides()
++        $translation_manager = \Drupal::getContainer()
++          ->get('string_translation');
++        $translation_manager->setDefaultLangcode($langcode);
++      }
++
+       try {
+         $build = $datasource->viewItem($item->getOriginalObject(), $view_mode);
+         if ($build) {
+@@ -295,6 +329,15 @@ class RenderedItem extends ProcessorPluginBase {
+         );
+       }
+ 
++      if (isset($old_negotiator)) {
++        $language_manager->setNegotiator($old_negotiator);
++        $language_manager->reset();
++      }
++      if (isset($translation_manager)) {
++        $default_langcode = $language_manager->getCurrentLanguage()->getId();
++        $translation_manager->setDefaultLangcode($default_langcode);
++      }
++
+       // Restore the original user.
+       $this->getAccountSwitcher()->switchBack();
+     }
+diff --git a/src/SearchApiServiceProvider.php b/src/SearchApiServiceProvider.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..65803b49a4951a3a4625f976f424e41820d4ca4d
+--- /dev/null
++++ b/src/SearchApiServiceProvider.php
+@@ -0,0 +1,36 @@
++<?php
++
++namespace Drupal\search_api;
++
++use Drupal\Core\DependencyInjection\ContainerBuilder;
++use Drupal\Core\DependencyInjection\ServiceProviderBase;
++use Drupal\search_api\Language\StaticLanguageNegotiator;
++use Symfony\Component\DependencyInjection\Reference;
++
++/**
++ * Provides dynamic services defined by the Search API.
++ */
++class SearchApiServiceProvider extends ServiceProviderBase {
++
++  /**
++   * {@inheritdoc}
++   */
++  public function register(ContainerBuilder $container) {
++    parent::register($container);
++
++    $modules = $container->getParameter('container.modules');
++
++    if (!isset($modules['language'])) {
++      return;
++    }
++
++    $container->register('search_api.static_language_negotiator', StaticLanguageNegotiator::class)
++      ->addArgument(new Reference('language_manager'))
++      ->addArgument(new Reference('plugin.manager.language_negotiation_method'))
++      ->addArgument(new Reference('config.factory'))
++      ->addArgument(new Reference('settings'))
++      ->addArgument(new Reference('request_stack'))
++      ->addMethodCall('initLanguageManager');
++  }
++
++}

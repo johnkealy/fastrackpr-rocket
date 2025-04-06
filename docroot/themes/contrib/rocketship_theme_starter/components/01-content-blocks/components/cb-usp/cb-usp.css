@@ -1,0 +1,34 @@
+/**
+ * Square mixin
+ *
+ * @param [Number] $dimensions = the height and width of the element
+ */
+/* stylelint-disable */
+/* stylelint-enable */
+/* stylelint-disable */
+/* stylelint-enable */
+.cb-usp {
+  --gap-cb-inner-hor: var(--gap-md);
+  --_usp-img-hor: 9.375rem;
+}
+
+.cb__intro--usp {
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .layout--1-col .cb__inner--usp {
+    flex-direction: row;
+  }
+  .layout--1-col .cb__intro--usp {
+    width: var(--_usp-img-hor);
+  }
+}
+@media (min-width: 940px) {
+  .layout--2-col .cb__inner--usp {
+    flex-direction: row;
+  }
+  .layout--2-col .cb__intro--usp {
+    width: var(--_usp-img-hor);
+  }
+}

@@ -1,0 +1,33 @@
+$schema: https://git.drupalcode.org/project/drupal/-/raw/10.1.x/core/modules/sdc/src/metadata.schema.json
+name: image
+status: stable
+group: Layout builder
+props:
+  type: object
+  properties:
+    component:
+      type: string
+    attributes:
+      type: Drupal\Core\Template\Attribute
+    classes:
+      type: array
+    media:
+      type: array
+    name:
+      type: string
+    extra_line:
+      type: [
+        object,
+        string
+      ]
+    link:
+      type: object
+    content:
+      type: object
+    title_suffix:
+      type: array
+slots:
+  cb_intro:
+    title: Content block - Intro
+  cb_content:
+    title: Content block - Body

@@ -1,0 +1,30 @@
+/**
+ * Square mixin
+ *
+ * @param [Number] $dimensions = the height and width of the element
+ */
+/* stylelint-disable */
+/* stylelint-enable */
+/* stylelint-disable */
+/* stylelint-enable */
+.layout--1-col .cb__inner--text {
+  max-width: var(--max-width-inner);
+}
+
+.cb-text--vm-centered {
+  text-align: center;
+}
+.cb-text--vm-centered .cb__inner {
+  margin-inline: auto;
+}
+.cb-text--vm-centered .text-long {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.cb-text--vm-centered .text-long ul,
+.cb-text--vm-centered .text-long ol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}

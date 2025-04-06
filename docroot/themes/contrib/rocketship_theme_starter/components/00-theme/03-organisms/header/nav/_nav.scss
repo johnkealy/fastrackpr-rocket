@@ -1,0 +1,69 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Site navigation
+// *
+// * Overall styling for the navigation in the right order and breakpoints
+// * You can change breakpoints to have mobile navigation for wider screens
+// * but don't forget to also modify the breakpoint in the mobile nav javascript
+// *   located in: 02-molecules/menus/menu/menu--mobile.js
+// * and in the mobile menu Sass
+// *  in molecules > menus > menu
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: phone and tablet
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm-max {
+  .navigation__toggle-expand {
+    position: absolute;
+    top: 0;
+    right: var(--container-padding);
+    padding: 0;
+    background: none;
+
+    [aria-hidden="true"] {
+      display: none;
+    }
+  }
+
+  .navigation__toggle-expand__icon--open {
+    @include icon((
+      icon: bars,
+      size: 22,
+    ));
+  }
+
+  .navigation__toggle-expand__icon--closed {
+    @include icon((
+      icon: xmark,
+      size: 22,
+    ));
+  }
+
+  .wrapper--navigation__content {
+    display: none;
+    flex-direction: column;
+
+    .js-open & {
+      display: flex;
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop and bigger
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  .navigation__toggle-expand {
+    display: none;
+  }
+
+  .wrapper--navigation__content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-md);
+  }
+}

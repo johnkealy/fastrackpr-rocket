@@ -1,0 +1,27 @@
+diff --git a/core/profiles/demo_umami/demo_umami.info.yml b/core/profiles/demo_umami/demo_umami.info.yml
+index 471e21d8e9..33eb5014a9 100644
+--- a/core/profiles/demo_umami/demo_umami.info.yml
++++ b/core/profiles/demo_umami/demo_umami.info.yml
+@@ -50,3 +50,4 @@ themes:
+   - claro
+   - umami
+ keep_english: true
++hidden: true
+diff --git a/core/profiles/minimal/minimal.info.yml b/core/profiles/minimal/minimal.info.yml
+index e15cf830ba..5362b626fa 100644
+--- a/core/profiles/minimal/minimal.info.yml
++++ b/core/profiles/minimal/minimal.info.yml
+@@ -10,3 +10,4 @@ install:
+   - dynamic_page_cache
+ themes:
+   - stark
++hidden: true
+diff --git a/core/profiles/standard/standard.info.yml b/core/profiles/standard/standard.info.yml
+index e6af5c213a..393bd61508 100644
+--- a/core/profiles/standard/standard.info.yml
++++ b/core/profiles/standard/standard.info.yml
+@@ -39,3 +39,4 @@ install:
+ themes:
+   - olivero
+   - claro
++hidden: true

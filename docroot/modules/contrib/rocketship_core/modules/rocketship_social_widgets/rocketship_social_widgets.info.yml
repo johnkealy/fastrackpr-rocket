@@ -1,0 +1,13 @@
+name: Rocketship Social Widgets
+type: module
+description: Provides social sharing links for content entities.
+core_version_requirement: '^9.4 || ^10'
+package: Custom
+configure: entity.social_share_link.overview
+interface translation project: rocketship_social_widgets
+interface translation server pattern: modules/contrib/rocketship_social_widgets/translations/%project-%version-%language.po
+
+# Information added by Drupal.org packaging script on 2024-11-27
+version: '6.2.1'
+project: 'rocketship_core'
+datestamp: 1732708115

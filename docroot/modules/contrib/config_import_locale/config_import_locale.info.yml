@@ -1,0 +1,15 @@
+name: 'Locale: Config import'
+type: module
+description: Allows configuration of the behaviour of interface translation on config import
+core_version_requirement: ^10.1 || ^11
+package: Multilingual
+dependencies:
+  - drupal:language
+  - drupal:locale
+  - drupal:config
+configure: config_import_locale.settings
+
+# Information added by Drupal.org packaging script on 2025-02-06
+version: '2.1.2'
+project: 'config_import_locale'
+datestamp: 1738823360

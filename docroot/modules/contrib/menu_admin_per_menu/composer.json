@@ -1,0 +1,16 @@
+{
+  "name": "drupal/menu_admin_per_menu",
+  "type": "drupal-module",
+  "description": "Allows to give roles per menu admin permissions without giving them full administer menu permission.",
+  "keywords": ["Drupal"],
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://www.drupal.org/project/menu_admin_per_menu",
+  "minimum-stability": "dev",
+  "support": {
+    "issues": "https://drupal.org/project/issues/menu_admin_per_menu",
+    "source": "https://git.drupalcode.org/project/menu_admin_per_menu"
+  },
+  "require": {
+    "drupal/core": "^10.2 || ^11.0"
+  }
+}

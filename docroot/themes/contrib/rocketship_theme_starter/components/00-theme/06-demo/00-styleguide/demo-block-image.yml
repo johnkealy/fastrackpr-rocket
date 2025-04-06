@@ -1,0 +1,25 @@
+label: 'B002 Image'
+labelled: false
+configuration:
+  label_display: false
+block_type: cb_image
+bem_block_modifiers:
+  - provider-layout-builder
+bem_block_extra:
+  - content-block
+  - block-layout_builder
+fields:
+  media:
+    field:
+      label_hidden: true
+      field_name: field_cb_image
+      field_type: entity_reference
+      image_alt: 'A 3:2 image'
+      image_sizes: '100vw'
+      image_attributes:
+        src: 'https://picsum.photos/320/213'
+        srcset: 'https://picsum.photos/768/216 480w, https://picsum.photos/940/627 768w, https://picsum.photos/1200/800 940w'
+  link:
+    image_wrapper_url_target: "_blank"
+    image_wrapper_url: "#"
+    image_wrapper_title: "link to some site"

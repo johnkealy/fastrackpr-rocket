@@ -1,0 +1,13 @@
+name: 'Node Keep Config Test'
+description: 'Provides test configs for node_keep tests.'
+type: module
+package: Testing
+core_version_requirement: ^9 || ^10 || ^11
+dependencies:
+  - drupal:node
+  - node_keep:node_keep
+
+# Information added by Drupal.org packaging script on 2024-10-15
+version: '2.2.5'
+project: 'node_keep'
+datestamp: 1728988125

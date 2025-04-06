@@ -1,0 +1,21 @@
+{#
+/**
+ * Available variables:
+ * - attributes: HTML attributes for the containing span element.
+ * - title:  Entity label
+ */
+#}
+
+{% if cke %}
+  <div class="text-long">
+{% endif %}
+
+<span{{ attributes }}>
+  {{ title }}
+</span>
+
+{{ text|raw }}
+
+{% if cke %}
+  </div>
+{% endif %}

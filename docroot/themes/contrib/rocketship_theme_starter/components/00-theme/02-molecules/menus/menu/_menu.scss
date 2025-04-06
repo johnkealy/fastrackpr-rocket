@@ -1,0 +1,126 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Menu - General styling for all menus
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+:root {
+  --_expand-icon-size: #{rem(12)};
+  --_expand-icon-width: #{rem(22)};
+  --_expand-icon-height: #{rem(22)};
+  --_menu__link-padding: 0;
+
+  @include bp-md {
+    --_expand-icon-width: var(--_expand-icon-size);
+    --_expand-icon-height: 100%;
+  }
+}
+
+.menu__item--with-sub {
+  position: relative;
+}
+
+.menu__link {
+  display: block;
+  padding: var(--_menu__link-padding);
+}
+
+.expand-sub {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: var(--_expand-icon-width);
+  height: var(--_expand-icon-height);
+  padding: 0;
+  background: none;
+  @include icon((
+    icon: chevron-down,
+    size: var(--_expand-icon-size),
+    margin: 0,
+  ));
+
+  &::before {
+    transition: transform $easing $duration;
+  }
+  &[aria-expanded="true"] {
+    &::before {
+      transform: rotate(180deg);
+    }
+  }
+}
+
+.menu--sub {
+  display: none;
+  overflow: hidden;
+  height: 0;
+  background: hsl(var(--clr-nav-submenu));
+  transition: all $duration $easing;
+  transition-behavior: allow-discrete;
+  interpolate-size: allow-keywords;
+
+  &.js-open {
+    display: block;
+    height: max-content;
+
+    @supports (transition-behavior: allow-discrete) and (interpolate-size: allow-keywords) {
+      @starting-style {
+        height: 0;
+      }
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: phone and tablet
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm-max {
+  .menu__link--with-sub {
+    padding-right: var(--_expand-icon-width);
+  }
+
+  .expand-sub {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop and bigger
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  .menu__item--with-sub {
+    display: flex;
+    gap: var(--gap-xxs);
+  }
+
+  .expand-sub {
+    .menu__item:hover & {
+      &::before {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .menu--sub {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    flex-direction: column;
+    margin: 0;
+    min-width: rem(150);
+
+    .menu__item--with-sub:hover & {
+      display: block;
+      height: max-content;
+
+      @supports (transition-behavior: allow-discrete) and (interpolate-size: allow-keywords) {
+        @starting-style {
+          height: 0;
+        }
+      }
+    }
+  }
+}

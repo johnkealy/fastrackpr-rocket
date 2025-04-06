@@ -1,0 +1,147 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Links: helpers
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+
+// * Mixins
+// =============================================================================
+
+// ** underlined link: using pseudo element so we can animate it
+//
+// -- Usage normal: starts with an underline and disappears on hover
+//      @include link-underline((color: red, color-hover: blue));
+// -- Usage inversed: an underline only appears when hovered
+//    @include link-underline(inverse: true);
+
+@mixin link-underline($settings) {
+  $color: map-get($settings, color);
+  $color-hover: map-get($settings, color-hover);
+  $color-active: map-get($settings, color-active);
+  $inverse: map-get($settings, inverse);
+
+  @if ($color == null) {
+    $color: hsl(var(--clr-base));
+  }
+  @if ($color-hover == null) {
+    $color-hover: $color;
+  }
+  @if ($color-active == null) {
+    $color-active: $color-hover;
+  }
+  @if ($inverse == null) {
+    $inverse: false;
+  }
+
+  position: relative;
+  display: inline; // otherwise wrapping of the border bottom doesn't work
+  transition-property: color, background-color, border;
+
+  &,
+  &:visited {
+    color: hsl($color);
+
+    @if ($inverse == true) {
+      border-bottom: rem(1) solid hsla($color-hover, 0);
+    } @else {
+      border-bottom: rem(1) solid hsla($color, 1);
+    }
+  }
+
+  &:hover,
+  &:focus {
+    color: hsl($color-hover);
+
+    @if ($inverse == true) {
+      border-bottom: rem(1) solid hsla($color-hover, 1);
+    } @else {
+      border-bottom: rem(1) solid hsla($color, 0);
+    }
+  }
+
+  &:active {
+    color: hsl($color-active);
+
+    @if ($inverse == true) {
+      border-bottom: 0 none;
+    } @else {
+      border-bottom: rem(1) solid hsla($color, 0);
+    }
+  }
+}
+
+
+// ** More Link
+// -- Used on teasers
+@mixin link-more {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  @include text-nobreak;
+
+  @include link-underline((
+    color: var(--clr-spot-1),
+    color-hover: var(--clr-spot-1),
+    color-active: var(--clr-spot-1)
+  ));
+}
+
+// ** More Link Big
+@mixin link-more-big {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-base);
+  background-color: transparent;
+  gap: rem(5);
+
+  @include icon((
+    icon: long-arrow-right,
+  ));
+
+  @include text-nobreak;
+
+  &::before {
+    position: relative;
+    top: -1px;
+    color: hsl(var(--clr-spot-2));
+    transition: none;
+  }
+
+  &,
+  &:visited {
+    color: hsl(var(--clr-spot-1));
+  }
+
+  &:hover,
+  &:active {
+    color: hsl(var(--clr-spot-2));
+  }
+}
+
+// ** Back Link
+// --
+@mixin link-back {
+  display: inline-flex;
+  align-items: center;
+  gap: rem(5);
+  text-decoration: none;
+
+  @include icon((
+    icon: angle-left,
+    size: 15,
+  ));
+
+  @include text-nobreak;
+
+  &::before {
+    transition: none; // prevent lagging on transition from link tag itself
+  }
+
+  &::after {
+    display: none;
+  }
+}

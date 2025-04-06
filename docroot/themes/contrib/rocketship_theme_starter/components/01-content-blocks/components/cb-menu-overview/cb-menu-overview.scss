@@ -1,0 +1,93 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: Menu overview.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+@import "../../../00-theme/01-atoms/03-lists/list--ul/_list--helpers";
+
+.cb-menu-overview {
+  --_menu-overview-gap: #{rem(20)};
+  --_menu-overview-bg: var(--clr-off-white);
+  --_menu-overview-img-size: #{rem(80)};
+}
+
+.cb__intro--menu-overview {
+  .layout--1-col & {
+    max-width: var(--max-width-inner);
+  }
+}
+
+.field-cb-menu-overview__overview {
+  @include list-reset;
+  @include flex-grid(12, var(--_menu-overview-gap));
+  gap: var(--_menu-overview-gap) 0;
+}
+
+.field-cb-menu-overview__item {
+  @include flex-col(12, 12, var(--_menu-overview-gap));
+  display: flex;
+  margin-bottom: 0;
+  background: hsl(var(--_menu-overview-bg));
+}
+
+.field-cb-menu-overview__item__visual {
+  flex: 0 0 var(--_menu-overview-img-size);
+}
+
+.field-cb-menu-overview__item__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xxs) 0;
+  padding: var(--gap-md);
+}
+
+.field-cb-menu-overview__item__title {
+  --clr-link: var(--clr-text);
+  --clr-link-hover: var(--clr-text);
+  --clr-link-active: var(--clr-text);
+
+  font-weight: var(--fw-bold);
+}
+
+.field-cb-menu-overview__item__link {
+  a {
+    position: absolute;
+    inset: 0;
+    font-size: 0;
+  }
+
+  // in case of <nolink>, this does not need to be seen.
+  span {
+    display: none;
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  .field-cb-menu-overview__item {
+    .layout--1-col & {
+      width: calc(#{math.div(100%, 12) * 6} - var(--_menu-overview-gap));
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  .field-cb-menu-overview__item {
+    .layout--1-col & {
+      width: calc(#{math.div(100%, 12) * 4} - var(--_menu-overview-gap));
+    }
+  }
+}

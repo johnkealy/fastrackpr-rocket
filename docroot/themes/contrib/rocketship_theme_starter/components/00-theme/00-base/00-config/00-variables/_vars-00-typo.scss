@@ -1,0 +1,18 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Variables: typography
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// ** Fonts
+// =============================================================================
+
+// if fonts take too long to load,
+// and the user sees unstyled text
+// we can set a preloader
+$font-preloader: false;
+
+// base html font size, used for calculating px to rem
+// if you want px and rem to be the same value,
+// set this to 10 instead
+$rem-base: 16;

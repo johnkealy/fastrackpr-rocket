@@ -1,0 +1,3 @@
+permissions:
+  - 'view section library templates'
+  - 'import template from section library'

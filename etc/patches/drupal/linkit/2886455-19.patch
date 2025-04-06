@@ -1,0 +1,151 @@
+diff --git a/src/Plugin/Linkit/Matcher/EntityMatcher.php b/src/Plugin/Linkit/Matcher/EntityMatcher.php
+index 9d56a47..85d2209 100644
+--- a/src/Plugin/Linkit/Matcher/EntityMatcher.php
++++ b/src/Plugin/Linkit/Matcher/EntityMatcher.php
+@@ -9,9 +9,11 @@ use Drupal\Core\Entity\EntityInterface;
+ use Drupal\Core\Entity\EntityRepositoryInterface;
+ use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+ use Drupal\Core\Entity\EntityTypeManagerInterface;
++use Drupal\Core\Entity\TranslatableInterface;
+ use Drupal\Core\Entity\Query\QueryInterface;
+ use Drupal\Core\Extension\ModuleHandlerInterface;
+ use Drupal\Core\Form\FormStateInterface;
++use Drupal\Core\Language\LanguageManagerInterface;
+ use Drupal\Core\Session\AccountInterface;
+ use Drupal\Core\Url;
+ use Drupal\linkit\ConfigurableMatcherBase;
+@@ -90,6 +92,13 @@ class EntityMatcher extends ConfigurableMatcherBase {
+    */
+   protected $targetType;
+
++  /**
++   * The language manager.
++   *
++   * @var \Drupal\Core\Language\LanguageManagerInterface
++   */
++  protected $languageManager;
++
+   /**
+    * The substitution manager.
+    *
+@@ -100,7 +109,7 @@ class EntityMatcher extends ConfigurableMatcherBase {
+   /**
+    * {@inheritdoc}
+    */
+-  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database, EntityTypeManagerInterface $entity_type_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info, EntityRepositoryInterface $entity_repository, ModuleHandlerInterface $module_handler, AccountInterface $current_user, SubstitutionManagerInterface $substitution_manager) {
++  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database, EntityTypeManagerInterface $entity_type_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info, EntityRepositoryInterface $entity_repository, ModuleHandlerInterface $module_handler, AccountInterface $current_user, SubstitutionManagerInterface $substitution_manager, LanguageManagerInterface $language_manager) {
+     parent::__construct($configuration, $plugin_id, $plugin_definition);
+
+     if (empty($plugin_definition['target_entity'])) {
+@@ -112,8 +121,9 @@ class EntityMatcher extends ConfigurableMatcherBase {
+     $this->entityRepository = $entity_repository;
+     $this->moduleHandler = $module_handler;
+     $this->currentUser = $current_user;
+-    $this->targetType = $plugin_definition['target_entity'];
+-    $this->substitutionManager = $substitution_manager;
++      $this->targetType = $plugin_definition['target_entity'];
++      $this->substitutionManager = $substitution_manager;
++      $this->languageManager = $language_manager;
+   }
+
+   /**
+@@ -130,7 +140,8 @@ class EntityMatcher extends ConfigurableMatcherBase {
+       $container->get('entity.repository'),
+       $container->get('module_handler'),
+       $container->get('current_user'),
+-      $container->get('plugin.manager.linkit.substitution')
++      $container->get('plugin.manager.linkit.substitution'),
++      $container->get('language_manager')
+     );
+   }
+
+@@ -174,6 +185,19 @@ class EntityMatcher extends ConfigurableMatcherBase {
+       }
+     }
+
++    $translated_entities_option = $this->t('No');
++    if ($this->configuration['translated_entities'] == 1) {
++      $translated_entities_option = $this->t('Current language');
++    }
++    if ($this->configuration['translated_entities'] == 2) {
++      $translated_entities_option = $this->t('Actual match');
++    }
++    if ($this->configuration['translated_entities']) {
++      $summery[] = $this->t('Use translated entities: @translated_entities', [
++        '@translated_entities' => $translated_entities_option,
++      ]);
++    }
++
+     return $summery;
+   }
+
+@@ -185,6 +209,7 @@ class EntityMatcher extends ConfigurableMatcherBase {
+       'metadata' => '',
+       'bundles' => [],
+       'group_by_bundle' => FALSE,
++      'translated_entities' => 0,
+       'substitution_type' => SubstitutionManagerInterface::DEFAULT_SUBSTITUTION,
+       'limit' => static::DEFAULT_LIMIT,
+     ] + parent::defaultConfiguration();
+@@ -288,6 +313,19 @@ class EntityMatcher extends ConfigurableMatcherBase {
+       '#description' => $this->t('Limit the amount of results displayed when searching.'),
+       '#default_value' => $this->configuration['limit'],
+     ];
++
++    $form['translated_entities'] = [
++      '#type' => 'select',
++      '#title' => $this->t('Use translated entities'),
++      '#description' => $this->t('The translated entities will be used to create suggestions (if possible)'),
++      '#default_value' => $this->configuration['translated_entities'],
++      '#options' => [
++        0 => $this->t('No'),
++        1 => $this->t('Current language'),
++        2 => $this->t('Actual match'),
++      ],
++    ];
++
+     return $form;
+   }
+
+@@ -304,6 +342,7 @@ class EntityMatcher extends ConfigurableMatcherBase {
+     $this->configuration['metadata'] = $form_state->getValue('metadata');
+     $this->configuration['bundles'] = $form_state->getValue('bundles');
+     $this->configuration['group_by_bundle'] = $form_state->getValue('group_by_bundle');
++    $this->configuration['translated_entities'] = $form_state->getValue('translated_entities');
+     $this->configuration['substitution_type'] = $form_state->getValue('substitution_type');
+     $this->configuration['limit'] = $form_state->getValue('limit');
+   }
+@@ -342,6 +381,33 @@ class EntityMatcher extends ConfigurableMatcherBase {
+         continue;
+       }
+
++      if ($this->configuration['translated_entities'] && $entity instanceof TranslatableInterface) {
++        if ($this->configuration['translated_entities'] == 1) {
++          // If we need to show an entity in current UI language, just try
++          // to retrieve it.
++          $langcode = $this->languageManager->getCurrentLanguage()->getId();;
++          if ($entity->hasTranslation($langcode)) {
++            $entity = $entity->getTranslation($langcode);
++          }
++        }
++        elseif ($this->configuration['translated_entities'] == 2) {
++          // If we need to show actually matched entity, we can just retrieve
++          // them from the entity query results since it returns only ids.
++          // So we will iterate over all existing translations and looking
++          // for matched label.
++          $languages = $entity->getTranslationLanguages();
++          foreach ($languages as $language) {
++            if ($entity->hasTranslation($language->getId())) {
++              $entity_translation = $entity->getTranslation($language->getId());
++              if (stripos($entity_translation->label(), $string) !== FALSE) {
++                $entity = $entity_translation;
++                break;
++              }
++            }
++          }
++        }
++      }
++
+       $entity = $this->entityRepository->getTranslationFromContext($entity);
+       $suggestion = $this->createSuggestion($entity);
+       $suggestions->addSuggestion($suggestion);

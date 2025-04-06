@@ -1,0 +1,17 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: FAQ.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb__intro--faq {
+  .layout--1-col & {
+    max-width: var(--max-width-inner);
+  }
+}

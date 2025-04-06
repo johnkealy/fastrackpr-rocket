@@ -1,0 +1,102 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Mautic form block type
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+.block--type-mautic-form {
+  padding-block: var(--gap-vert);
+  @include full-bg(hsl(var(--clr-off-white)));
+
+  .field {
+    max-width: rem(710);
+    margin-inline: auto;
+  }
+  .field--name-field-mautic-title,
+  .field--name-field-mautic-text {
+    text-align: center;
+  }
+  .field--name-field-mautic-formid {
+    margin-top: rem(30);
+  }
+
+  .mauticform-row {
+    margin-bottom: rem(15);
+    width: 100%;
+
+    // because we still run into floating elements instead of flexbox sometimes
+    @include clearfix;
+  }
+  .mauticform-label {
+    display: block;
+    margin-bottom: rem(2);
+  }
+  .mauticform-required .mauticform-label {
+    &::after {
+      display: inline-block;
+      font-size: rem(10);
+      vertical-align: top;
+      color: hsl(var(--clr-error));
+      content: "*";
+      margin-left: rem(2);
+    }
+  }
+  .mauticform-checkboxgrp,
+  .mauticform-radiogrp {
+    .mauticform-label {
+      margin-bottom: rem(10);
+      font-weight: var(--fw-normal);
+    }
+  }
+  .mauticform-freetext {
+    font-size: var(--fs-small);
+    line-height: var(--lh--small);
+  }
+  .mauticform-errormsg {
+    font-size: var(--fs-small);
+    line-height: var(--lh--small);
+    color: hsl(var(--clr-error));
+  }
+  .mauticform-button-wrapper {
+    margin-top: rem(25);
+  }
+  .mauticform-button {
+    @include button;
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+
+  .block--type-mautic-form {
+    .mauticform-page-wrapper {
+      @include flex-grid(12, 20);
+      display: flex !important; // Overwrite display block on error
+      margin-top: 0;
+    }
+    .mauticform-row {
+      @include flex-col(12, 12, 20);
+      margin-top: 0;
+
+      &.half {
+        @include flex-col(6, 12, 20);
+        margin-top: 0;
+      }
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: wide screens
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-lg {
+
+  .block--type-mautic-form {
+    --gap-vert: var(--gap-vert-lg-2);
+  }
+}
+

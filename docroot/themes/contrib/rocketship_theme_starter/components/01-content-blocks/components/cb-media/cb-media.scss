@@ -1,0 +1,270 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: media.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb--layout-mode--stretched {
+  .layout--content-blocks & {
+    // -- Default: 1-col
+    top: 0;
+    // place in middle as starting point
+    left: 50%;
+    // overrides the bottom margin reset from _00-block.scss
+    margin-top: 0;
+    // size to fill window width
+    width: 100vw;
+    // pull back to edge of window
+    transform: translateX(-50vw);
+
+    img {
+      width: 100%;
+      max-width: none;
+    }
+
+    // negate the spacing from the layout
+    // top if first in column
+    &:first-child,
+    &.first-child {
+      margin-top: calc(-1 * var(--gap-layout-vert-top));
+    }
+
+    // bottom, if last in column
+    &:last-child,
+    &.last-child {
+      margin-bottom: calc(-1 * var(--gap-layout-vert-bottom));
+    }
+  }
+}
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: phone only
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-xs-only {
+  .cb--layout-mode--stretched {
+    // -- resets block margin overrides for multi-col layouts
+    //    (because they render as 1 col on phone size screen).
+
+    // 2-col: for stretched images in the top part.
+    .layout__sidebar--2-col & {
+      &:last-child,
+      &.last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    // 2-col: for stretched images in the bottom part.
+    .layout__content--2-col & {
+      &:first-child,
+      &.first-child {
+        margin-top: 0;
+      }
+    }
+
+    // 3-col: for stretched images in the bottom part.
+    .layout__sidebar--3-col--content-blocks--right {
+      &:first-child,
+      &.first-child {
+        margin-top: 0;
+      }
+    }
+
+    // 4-col: for stretched images in the bottom part.
+    .layout__region--4-col--content-blocks--right {
+      &:first-child,
+      &.first-child {
+        margin-top: 0;
+      }
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  .cb--layout-mode--stretched {
+    .layout--content-blocks & {
+      --width-layout-col-1-2: 50vw;
+      --width-layout-col-1-3: 50vw;
+      --width-layout-col-2-3: 50vw;
+      --width-layout-col-1-4: 50vw;
+      --width-layout-col-3-4: 50vw;
+      --width-layout-col-5-12: 50vw;
+      --width-layout-col-7-12: 50vw;
+
+      // -- Default: 1-col
+      overflow: hidden; // prevent stretched image from ruining stuff.
+    }
+
+    .video-embed-field-responsive-video {
+      position: static;
+    }
+
+    // -- rework block spacing and positioning for multi-col layouts.
+    .layout--2-col--content-blocks &,
+    .layout--3-col--content-blocks &,
+    .layout--4-col--content-blocks & {
+      position: absolute;
+      height: 100%;
+
+      // With the block positioned absolutely,
+      // no need to worry about spacing,
+      // since block will overlap with the layout padding.
+      &:first-child,
+      &.first-child {
+        margin-top: 0;
+      }
+      &:last-child,
+      &.last-child {
+        margin-bottom: 0;
+      }
+
+      img {
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: auto;
+        min-width: 50vw;
+        max-width: none;
+        object-fit: cover;
+      }
+
+      // When img has extra wrappers (eg. media field, or blazy or lazy loaders)
+      // having a position messes things up
+      // so we either turn it off on that wrapper
+      // or make it stretch along with the block to accomodate the stretching img
+      // basically, match what the sidebar div is doing.
+
+      .media,
+      .drimage,
+      picture {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+      }
+    }
+
+    // ** Positioning & sizing depending on col size.
+
+    // -- In a 2-col layout
+    // =============================================================================
+
+    // default: 1/2
+    .layout--2-col--content-blocks & {
+      width: var(--width-layout-col-1-2);
+    }
+
+    .layout__region--size-1-3 & {
+      width: var(--width-layout-col-1-3);
+    }
+
+    .layout__region--size-2-3 & {
+      width: var(--width-layout-col-2-3);
+    }
+
+    .layout__region--size-1-4 & {
+      width: var(--width-layout-col-1-4);
+    }
+
+    .layout__region--size-3-4 & {
+      width: var(--width-layout-col-3-4);
+    }
+
+    .layout__region--size-5-12 & {
+      width: var(--width-layout-col-5-12);
+    }
+
+    .layout__region--size-7-12 & {
+      width: var(--width-layout-col-7-12);
+    }
+
+    // for stretched images on the right side
+    .layout__sidebar--2-col--content-blocks--right &,
+    .layout__content--2-col--content-blocks--right & {
+      right: 50%;
+      left: auto;
+      transform: translateX(50vw);
+
+      img {
+        right: auto;
+        left: 0;
+      }
+    }
+
+    // -- In a 3-col layout
+    // =============================================================================
+
+    .layout--3-col--content-blocks & {
+      width: var(--width-layout-col-1-3);
+    }
+
+    // -- In a 4-col layout
+    // =============================================================================
+
+    .layout--4-col--content-blocks & {
+      width: var(--width-layout-col-1-4);
+    }
+
+    // -- If 2 have matching background-colors on the Layout
+    .layout--content-blocks.has-matching-bg & {
+      // There is no top padding, so don't compensate for it.
+      &:first-child,
+      &.first-child {
+        margin-top: 0;
+      }
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  .cb--layout-mode--stretched {
+    .layout--content-blocks & {
+      --width-layout-col-1-3: calc((50vw - 50%) + #{math.div(100%, 3)});
+      --width-layout-col-2-3: calc((50vw - 50%) + #{math.div(100%, 3) * 2});
+      --width-layout-col-1-4: calc((50vw - 50%) + #{math.div(100%, 4)});
+      --width-layout-col-3-4: calc((50vw - 50%) + #{math.div(100%, 4) * 3});
+    }
+
+    // ** positioning & sizing depending on col size.
+    .layout__region--size-1-3 &,
+    .layout__region--size-2-3 &,
+    .layout__region--size-1-4 &,
+    .layout__region--size-3-4 &,
+    .layout__region--size-5-12 &,
+    .layout__region--size-7-12 & {
+      img {
+        min-width: 100%;
+      }
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: large
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-lg {
+  .cb--layout-mode--stretched {
+    .layout--content-blocks & {
+      --width-layout-col-5-12: calc((50vw - 50%) + #{math.div(100%, 12) * 5});
+      --width-layout-col-7-12: calc((50vw - 50%) + #{math.div(100%, 12) * 7});
+    }
+  }
+}

@@ -1,0 +1,42 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: text.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb__inner--text {
+  .layout--1-col & {
+    max-width: var(--max-width-inner);
+  }
+}
+
+.cb-text--vm-centered {
+  text-align: center;
+
+  // Center content (combo with max-width).
+  .cb__inner {
+    margin-inline: auto;
+  }
+
+  // Lists centering.
+  // IF you only want the list-items to be centered instead of the whole list,
+  // move the 3 lines into the "ul, ol" declaration.
+  .text-long {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    ul,
+    ol {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+}

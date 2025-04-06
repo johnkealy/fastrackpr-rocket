@@ -1,0 +1,204 @@
+diff --git a/core/modules/file/src/Element/ManagedFile.php b/core/modules/file/src/Element/ManagedFile.php
+index e198f35..63ad09b 100644
+--- a/core/modules/file/src/Element/ManagedFile.php
++++ b/core/modules/file/src/Element/ManagedFile.php
+@@ -11,6 +11,7 @@
+ use Drupal\Core\Render\Element;
+ use Drupal\Core\Render\Element\FormElement;
+ use Drupal\Core\Site\Settings;
++use Drupal\Core\Template\Attribute;
+ use Drupal\Core\Url;
+ use Drupal\file\Entity\File;
+ use Symfony\Component\HttpFoundation\Request;
+@@ -369,8 +370,27 @@ public static function processManagedFile(&$element, FormStateInterface $form_st
+       $element['upload']['#attached']['drupalSettings']['file']['elements']['#' . $id] = $extension_list;
+     }
+ 
++    // Add states to ajax wrapper so states.js can potentially attach this
++    // element as a Dependent.
++    $attributes = new Attribute(['id' => $ajax_wrapper_id]);
++    if (isset($element['#states']) && !empty($element['#states'])) {
++      $attributes->offsetSet('data-drupal-states', json_encode($element['#states']));
++
++      // If we already have a file, we don't show the upload controls.
++      if ($fids) {
++        // So let field label's 'for' correspond to element with file IDs.
++        $element['#id'] = &$element['fids']['#id'];
++        // And add states to this element.
++        $element['fids']['#states'] = $element['#states'];
++      }
++      else {
++        // Add states to the file form element itself.
++        $element['upload']['#states'] = $element['#states'];
++      }
++    }
++
+     // Prefix and suffix used for Ajax replacement.
+-    $element['#prefix'] = '<div id="' . $ajax_wrapper_id . '">';
++    $element['#prefix'] = '<div' . $attributes . '>';
+     $element['#suffix'] = '</div>';
+ 
+     return $element;
+diff --git a/core/modules/file/tests/modules/file_test_states/file_test_states.info.yml b/core/modules/file/tests/modules/file_test_states/file_test_states.info.yml
+new file mode 100644
+index 0000000..fdda293
+--- /dev/null
++++ b/core/modules/file/tests/modules/file_test_states/file_test_states.info.yml
+@@ -0,0 +1,7 @@
++name: 'File test states'
++type: module
++description: 'Provides a simple form with file fields using states.'
++package: Testing
++version: VERSION
++dependencies:
++  - drupal:file
+diff --git a/core/modules/file/tests/modules/file_test_states/file_test_states.routing.yml b/core/modules/file/tests/modules/file_test_states/file_test_states.routing.yml
+new file mode 100644
+index 0000000..3e1bb3a
+--- /dev/null
++++ b/core/modules/file/tests/modules/file_test_states/file_test_states.routing.yml
+@@ -0,0 +1,7 @@
++example.form:
++  path: '/file-test-states-form'
++  defaults:
++    _title: 'File test states form'
++    _form: '\Drupal\file_test_states\Form\FileTestStatesForm'
++  requirements:
++    _access: 'TRUE'
+diff --git a/core/modules/file/tests/modules/file_test_states/src/Form/FileTestStatesForm.php b/core/modules/file/tests/modules/file_test_states/src/Form/FileTestStatesForm.php
+new file mode 100644
+index 0000000..e495433
+--- /dev/null
++++ b/core/modules/file/tests/modules/file_test_states/src/Form/FileTestStatesForm.php
+@@ -0,0 +1,62 @@
++<?php
++
++namespace Drupal\file_test_states\Form;
++
++use Drupal\Core\Form\FormBase;
++use Drupal\Core\Form\FormStateInterface;
++
++/**
++ * A simple form with a file and manage_file to test states.
++ */
++class FileTestStatesForm extends FormBase {
++
++  /**
++   * {@inheritdoc}
++   */
++  public function getFormId() {
++    return 'file_test_states_form';
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function buildForm(array $form, FormStateInterface $form_state) {
++    $form['toggle'] = [
++      '#type' => 'checkbox',
++      '#title' => $this->t('Toggle fields'),
++    ];
++    $form['managed_file_initially_visible'] = [
++      '#type' => 'managed_file',
++      '#title' => t('Managed File Initially Visible'),
++      '#states' => [
++        'visible'  => [':input[name="toggle"]' => ['checked' => FALSE]],
++      ],
++    ];
++    $form['managed_file_initially_hidden'] = [
++      '#type' => 'managed_file',
++      '#title' => t('Managed File Initially Hidden'),
++      '#states' => [
++        'visible'  => [':input[name="toggle"]' => ['checked' => TRUE]],
++      ],
++    ];
++    $form['managed_file_initially_optional'] = [
++      '#type' => 'managed_file',
++      '#title' => t('Managed File Initially Optional'),
++      '#states' => [
++        'required'  => [':input[name="toggle"]' => ['checked' => TRUE]],
++      ],
++    ];
++    return $form;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function validateForm(array &$form, FormStateInterface $form_state) {}
++
++  /**
++   * {@inheritdoc}
++   */
++  public function submitForm(array &$form, FormStateInterface $form_state) {}
++
++}
+diff --git a/core/modules/file/tests/src/FunctionalJavascript/FileManagedStateTest.php b/core/modules/file/tests/src/FunctionalJavascript/FileManagedStateTest.php
+new file mode 100644
+index 0000000..3589567
+--- /dev/null
++++ b/core/modules/file/tests/src/FunctionalJavascript/FileManagedStateTest.php
+@@ -0,0 +1,63 @@
++<?php
++
++namespace Drupal\Tests\file\FunctionalJavascript;
++
++use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
++
++/**
++ * Tests visibility of managed files.
++ *
++ * @group file
++ */
++class FileManagedStateTest extends WebDriverTestBase {
++
++  /**
++   * {@inheritdoc}
++   */
++  protected static $modules = ['file_test_states', 'file'];
++
++  /**
++   * {@inheritdoc}
++   */
++  protected $defaultTheme = 'stark';
++
++  /**
++   * Tests if managed file is correctly hidden with states.
++   */
++  public function testFileStateVisible() {
++    $this->drupalLogin($this->drupalCreateUser());
++    $this->drupalGet('file-test-states-form');
++
++    // Wait until the page has fully loaded including the ajax load of the
++    // managed files.
++    $this->assertSession()->assertWaitOnAjaxRequest();
++    $page = $this->getSession()->getPage();
++
++    // Now get the fields from the page.
++    $field_initially_visible = $page->findField('files[managed_file_initially_visible]');
++    $field_initially_hidden = $page->findField('files[managed_file_initially_hidden]');
++    $field_initially_optional = $page->findField('files[managed_file_initially_optional]');
++
++    // Check that the initially visible managed file is visible.
++    $this->assertTrue($field_initially_visible->isVisible());
++
++    // Check that the initially hidden managed file is hidden.
++    $this->assertFalse($field_initially_hidden->isVisible());
++
++    // Check that the initially optional managed file is optional.
++    $this->assertFalse($field_initially_optional->hasAttribute('required'));
++
++    // Toggle the fields.
++    $page->findField('toggle')->click();
++
++    // Check that the initially visible managed file is now hidden.
++    $this->assertFalse($field_initially_visible->isVisible());
++
++    // Check that the initially hidden managed file is now visible.
++    $this->assertTrue($field_initially_hidden->isVisible());
++
++    // Check that the initially optional managed file is now required.
++    $this->assertTrue($field_initially_optional->hasAttribute('required'));
++  }
++
++}

@@ -1,0 +1,22 @@
+/* stylelint-disable */
+@use "sass:math";
+
+@import "00-base/00-config/00-variables/vars-00-base";
+@import "00-base/01-helpers/02-mixins/_mixins-iconfont";
+
+@if ($custom-icons == true and $custom-icons-type == "font") {
+  <%
+  glyphs.forEach(function(glyph, i){
+    %>.icon-<%= glyph.fileName %><% if (i !== glyphs.length -1) {%>,<% } else { %> {<% } %>
+  <% }); %>
+    @include icon(());
+  }
+
+  <% _.each(glyphs, function(glyph) { %>.icon-<%= glyph.fileName %> {
+    &::before {
+      content: icon-char(<%= glyph.fileName %>);
+    }
+  }
+  <% }); %>
+}
+/* stylelint-enable */

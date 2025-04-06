@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * @file
+ * Installation hooks for dropsolid purge.
+ */
+
+/**
+ * Ensures that the module purge_drush is uninstalled.
+ */
+function dropsolid_purge_update_91001() {
+  \Drupal::service('module_installer')->uninstall(['purge_drush']);
+}
+
+/**
+ * Ensure that the drush_purge_queue_work processor is added.
+ *
+ * See https://www.drupal.org/project/purge/issues/3078507#comment-15278280
+ */
+function dropsolid_purge_update_91002() {
+  $processor_id = 'drush_purge_queue_work';
+  $purge_processors = \Drupal::service('purge.processors');
+  $enabled = $purge_processors->getPluginsEnabled();
+
+  // Verify that the plugin exists.
+  if (!isset($purge_processors->getPlugins()[$processor_id])) {
+    return t('The drush_purge_queue_work plugin does not exist.');
+  }
+
+  // Verify that the plugin is available and thus not yet enabled.
+  if (!in_array($processor_id, $purge_processors->getPluginsAvailable())) {
+    return t('The drush_purge_queue_work plugin is already enabled.');
+  }
+
+  // Define the new instance and store it.
+  $enabled[] = $processor_id;
+  $purge_processors->setPluginsEnabled($enabled);
+  return t('The drush_purge_queue_work processor has been added!');
+}

@@ -1,0 +1,134 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content Blocks
+// *
+// * General styling for content blocks (whitespaces, general fields, ...)
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// * Generic styles & fields
+// =============================================================================
+
+.content-block {
+  position: relative;
+
+  // by default, we accept that blocks in a col will flow in a column
+  // space between the blocks mirrors == the minimal layout spacing option on layouts
+  margin-top: var(--gap-layout-vert-minimal);
+
+  // reset on first block (so it doesn't add to the layout bottom space)
+  &.first-child,
+  &:first-child {
+    margin-top: 0;
+  }
+
+  // alignment from a view mode (layout class on the block)
+  // can be overridden by CKE for individual parts of the text in a field that has CKEditor
+  // if a CKE text field is added
+  // Exception applies for centered layout
+  //
+
+  .field {
+    .text-align-centered {
+      text-align: center;
+    }
+
+    .text-align-right {
+      text-align: right;
+    }
+
+    .text-align-justify {
+      text-align: justify;
+    }
+  }
+}
+
+// -- Recurring elements
+
+.cb__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-cb-inner-vert) var(--gap-cb-inner-hor);
+}
+
+.field--name-field-cb-title,
+.field--name-field-cb-subtitle {
+  &:last-child {
+    .heading {
+      margin-bottom: 0;
+    }
+  }
+}
+
+// -- Buttons
+
+.field--name-field-cb-button {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: var(--gap-cb-buttons-vert);
+  text-align: left;
+  gap: var(--gap-cb-button-vert) var(--gap-cb-button-hor);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+// * Boxed content
+// =============================================================================
+
+// ** background for content of a block (eg. Testimonial)
+//    you can use these to override stuff based on background-color changes as well
+//    eg. different button colors.
+
+.cb--boxed {
+  .cb__inner {
+    margin-inline: auto;
+    padding-block: var(--gap-cb-boxed-vert);
+    padding-inline: var(--gap-cb-boxed-hor);
+    background-color: hsl(var(--clr-cb-boxed-bg));
+  }
+}
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  // * Spacing between blocks in a column
+  // =============================================================================
+
+  // By default, we accept that blocks in a col will flow in a column.
+  .content-block {
+    //
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  // * Spacing between blocks in a column
+  // =============================================================================
+
+  // By default, we accept that blocks in a col will flow in a column.
+  .content-block {
+    //
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: large
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-lg {
+  // * Spacing between blocks in a column
+  // =============================================================================
+
+  // By default, we accept that blocks in a col will flow in a column.
+  .content-block {
+    //
+  }
+}

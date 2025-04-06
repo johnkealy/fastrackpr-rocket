@@ -1,0 +1,12 @@
+name: 'Dropsolid Rocketship Drush'
+type: module
+description: 'Contains helpful, Rocketship-specific drush commands'
+core_version_requirement: ^10.3 || ^11
+package: Rocketship
+dependencies:
+  - config_split:config_split
+
+# Information added by Drupal.org packaging script on 2025-03-19
+version: '6.2.2'
+project: 'dropsolid_rocketship_profile'
+datestamp: 1742383606

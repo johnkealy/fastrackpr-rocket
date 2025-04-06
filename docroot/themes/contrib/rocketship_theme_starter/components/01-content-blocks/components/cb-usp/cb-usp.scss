@@ -1,0 +1,56 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: USP.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb-usp {
+  --gap-cb-inner-hor: var(--gap-md);
+  --_usp-img-hor: #{rem(150)};
+}
+
+.cb__intro--usp {
+  flex-shrink: 0;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  .cb__inner--usp {
+    .layout--1-col & {
+      flex-direction: row;
+    }
+  }
+
+  .cb__intro--usp {
+    .layout--1-col & {
+      width: var(--_usp-img-hor);
+    }
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+  .cb__inner--usp {
+    .layout--2-col & {
+      flex-direction: row;
+    }
+  }
+
+  .cb__intro--usp {
+    .layout--2-col & {
+      width: var(--_usp-img-hor);
+    }
+  }
+}

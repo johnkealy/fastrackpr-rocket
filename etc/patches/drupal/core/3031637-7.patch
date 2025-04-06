@@ -1,0 +1,13 @@
+diff --git a/core/lib/Drupal/Core/Entity/Plugin/EntityReferenceSelection/DefaultSelection.php b/core/lib/Drupal/Core/Entity/Plugin/EntityReferenceSelection/DefaultSelection.php
+index 8094c5a005..d3c69f50a7 100644
+--- a/core/lib/Drupal/Core/Entity/Plugin/EntityReferenceSelection/DefaultSelection.php
++++ b/core/lib/Drupal/Core/Entity/Plugin/EntityReferenceSelection/DefaultSelection.php
+@@ -178,7 +178,7 @@ public function buildConfigurationForm(array $form, FormStateInterface $form_sta
+         '#title' => $entity_type->getBundleLabel(),
+         '#options' => $bundle_options,
+         '#default_value' => (array) $configuration['target_bundles'],
+-        '#required' => TRUE,
++        '#description' => $this->t('The bundles of the entity type that can be referenced. Optional, leave empty for all bundles.'),
+         '#size' => 6,
+         '#multiple' => TRUE,
+         '#element_validate' => [[static::class, 'elementValidateFilter']],

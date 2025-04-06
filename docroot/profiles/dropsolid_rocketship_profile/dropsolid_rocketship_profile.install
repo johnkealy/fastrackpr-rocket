@@ -1,0 +1,163 @@
+<?php
+
+/**
+ * @file
+ * Install file.
+ */
+
+use Drupal\Core\Config\FileStorage;
+use Drupal\user\Entity\User;
+
+/**
+ * Implements hook_install().
+ *
+ * Perform actions to set up the site for this profile.
+ *
+ * @see system_install()
+ */
+function dropsolid_rocketship_profile_install() {
+  $configFactory = \Drupal::configFactory();
+
+  $systemSiteConfig = $configFactory->getEditable('system.site');
+  $systemSiteConfig->set('name', 'Drupal');
+  $systemSiteConfig->set('mail', 'sites@example.com');
+  // Unset frontpage. /node won't exist, and we need something
+  // or else rocketship_seo's adding of "/" as a sitemap link will break
+  // all the things.
+  $systemSiteConfig->set('page.front', '/user');
+  $systemSiteConfig->save();
+
+  $account = User::load(1);
+  $account->addRole('administrator');
+  $account->set('init', 'sites@example.com');
+  $account->setEmail('sites@example.com');
+  $account->set('timezone', 'Europe/Brussels');
+  $account->activate();
+  $account->setPassword(\Drupal::service('password_generator')->generate(20));
+  $account->setUsername('admin');
+  $account->save();
+
+  // Create webadmin.
+  $webadmin = User::create([
+    'roles' => ['webadmin'],
+    'init' => 'webadmin@example.com',
+    'mail' => 'webadmin@example.com',
+    'status' => 1,
+    'timezone' => 'Europe/Brussels',
+    'pass' => \Drupal::service('password_generator')->generate(20),
+    'name' => 'webadmin',
+  ]);
+  $webadmin->save();
+
+  // Some config just does not want to properly get imported
+  // So we do it here manually. Else it freaks out for
+  // some reason.
+  \Drupal::configFactory()
+    ->getEditable('node.settings')
+    ->set('use_admin_theme', TRUE)
+    ->save();
+
+  \Drupal::configFactory()
+    ->getEditable('system.date')
+    ->set('country.default', 'BE')
+    ->set('first_day', 1)
+    ->set('timezone.default', 'Europe/Brussels')
+    ->set('timezone.user.configurable', FALSE)
+    ->set('timezone.user.warn', FALSE)
+    ->set('timezone.user.default', 0)
+    ->save();
+}
+
+/**
+ * Install and configure symfony mailer.
+ */
+function dropsolid_rocketship_profile_update_9001() {
+  // If symfony mailer is already installed, do nothing.
+  if (\Drupal::moduleHandler()->moduleExists('symfony_mailer')) {
+    return;
+  }
+
+  /** @var \Drupal\Core\Config\StorageInterface $config_storage */
+  $config_storage = \Drupal::service('config.storage');
+
+  /** @var \Drupal\Core\Extension\ModuleInstallerInterface $module_installer */
+  $module_installer = \Drupal::service('module_installer');
+
+  // Uninstall swiftmailer with mailsystem dependency.
+  if (\Drupal::moduleHandler()->moduleExists('swiftmailer')) {
+    $module_installer->uninstall(['swiftmailer']);
+  }
+
+  // Install symfony mailer.
+  $module_installer->install(['symfony_mailer']);
+
+  // Get file storage of local config split.
+  $config_path = \Drupal::service('extension.list.module')->getPath('dropsolid_rocketship_profile') . '/config/splits/local';
+  $source = new FileStorage($config_path);
+
+  $config_names = [
+    'symfony_mailer.mailer_transport.smtp',
+    'symfony_mailer.settings',
+  ];
+
+  // Write configs to the active storage.
+  foreach ($config_names as $config_name) {
+    $config_storage->write($config_name, $source->read($config_name));
+  }
+
+  $local_split = $config_storage->read('config_split.config_split.local');
+
+  // Make sure we have local config split to continue.
+  if (!$local_split) {
+    return;
+  }
+
+  // Support both old and new config split module versions.
+  $partial_list_key = isset($local_split['graylist']) ? 'graylist' : 'partial_list';
+  $partial_list = $local_split[$partial_list_key];
+
+  // Extend partial list with smtp transport for local environment.
+  foreach ($config_names as $config_name) {
+    if (!in_array($config_name, $partial_list)) {
+      $partial_list[] = $config_name;
+    }
+  }
+
+  \Drupal::configFactory()
+    ->getEditable('config_split.config_split.local')
+    ->set($partial_list_key, $partial_list)
+    ->save(TRUE);
+}
+
+/**
+ * Set Claro as admin theme.
+ */
+function dropsolid_rocketship_profile_update_9020() {
+  /** @var \Drupal\Core\Extension\ThemeInstallerInterface $theme_installer */
+  $theme_installer = \Drupal::service('theme_installer');
+  $theme_installer->install(['claro']);
+  $config = \Drupal::service('config.factory')->getEditable('system.theme');
+  $config->set('admin', 'claro')->save();
+
+  /** @var \Drupal\Core\Extension\ThemeHandlerInterface $theme_handler */
+  $theme_handler = \Drupal::service('theme_handler');
+  if ($theme_handler->themeExists('seven')) {
+    $theme_installer->uninstall(['seven']);
+  }
+}
+
+/**
+ * Delete custom rocketship_content_block_library views.
+ */
+function dropsolid_rocketship_profile_update_9003() {
+  $config = \Drupal::configFactory()->getEditable('views.view.rocketship_content_block_library');
+
+  if ($config) {
+    $config->delete();
+  }
+
+  user_role_grant_permissions('webadmin', [
+    'access block library',
+    'administer block content',
+  ]);
+}

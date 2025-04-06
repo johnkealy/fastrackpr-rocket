@@ -1,0 +1,55 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * 3 column layout
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// *
+// =============================================================================
+
+// .layout--3-col {
+//
+// }
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+
+  .layout__content--3-col--center,
+  .layout__sidebar--3-col--left,
+  .layout__sidebar--3-col--right {
+    flex: 0 0 auto;
+    flex-basis: auto;
+    margin-inline: calc(var(--gap-hor) / 2);
+    min-height: 1px;
+  }
+
+  // content as column, with 2 sidebars
+  .layout__content--3-col--center {
+    width: calc(50% - var(--gap-hor));
+  }
+
+  // the 2 sidebars
+  .layout__sidebar--3-col--left,
+  .layout__sidebar--3-col--right {
+    width: calc((100% * var(--grid-columns) / 3) - var(--gap-hor));
+  }
+
+}
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: desktop & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-md {
+
+  // for 2 sidebars
+  .layout__sidebar--3-col--left,
+  .layout__sidebar--3-col--right {
+    width: calc((100% * var(--grid-columns) / 3) - var(--gap-hor));
+  }
+
+}

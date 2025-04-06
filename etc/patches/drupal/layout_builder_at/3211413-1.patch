@@ -1,0 +1,12 @@
+diff --git a/src/Plugin/Field/FieldWidget/LayoutBuilderCopyWidget.php b/src/Plugin/Field/FieldWidget/LayoutBuilderCopyWidget.php
+index 7b2d9bb..0a5b17d 100644
+--- a/src/Plugin/Field/FieldWidget/LayoutBuilderCopyWidget.php
++++ b/src/Plugin/Field/FieldWidget/LayoutBuilderCopyWidget.php
+@@ -367,6 +367,7 @@ class LayoutBuilderCopyWidget extends WidgetBase {
+    */
+   protected function updateComponentConfiguration(array $configuration, BlockContentInterface $replicated_block) {
+     $configuration["block_revision_id"] = $replicated_block->getRevisionId();
++    $configuration["block_uuid"] = $replicated_block->uuid();
+     return $configuration;
+   }
+ }

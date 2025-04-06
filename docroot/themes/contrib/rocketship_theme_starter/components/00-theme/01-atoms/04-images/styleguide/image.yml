@@ -1,0 +1,4 @@
+image_alt: 'A 16 by 9 image'
+attributes:
+  src: 'https://picsum.photos/320/180'
+  loading: 'lazy'

@@ -1,0 +1,22 @@
+{#
+/**
+ * This is strictly an example file to demonstrate markup in Storybook.
+ * It is not intended to be included in any other component.
+ */
+#}
+{% embed "@rocketship-theme-starter-organisms/header/header--top/_header--top.twig" %}
+  {% block top %}
+    {% include "@rocketship-theme-starter-molecules/menus/styleguide/menu.twig" with {
+      menu_block_bem_modifiers: menu_language.menu_block_bem_modifiers,
+      menu_block_bem_extra: menu_language.menu_block_bem_extra,
+      menu: menu_language.menu,
+      label: menu_language.label,
+      configuration: menu_language.configuration,
+      items: menu_language.items,
+      drupalSettings: menu_language.drupalSettings,
+      attributes: menu_language.attributes,
+      links: menu_language.links,
+    } %}
+    {# end language menu #}
+  {% endblock top %}
+{% endembed %}

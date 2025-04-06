@@ -1,0 +1,40 @@
+diff --git a/purge/purge.services.yml b/purge/purge.services.yml
+index b203d2197..de6bd9a1c 100644
+--- a/purge/purge.services.yml
++++ b/purge/purge.services.yml
+@@ -8,7 +8,7 @@ services:
+     arguments: ['@config.factory', '@purge.logger.parts_factory']
+     public: true
+     tags:
+-      - { name: needs_destruction }
++      - { name: needs_destruction, priority: -900 }
+   purge.logger.parts_factory:
+     class: Drupal\purge\Logger\LoggerChannelPartFactory
+     arguments: ['@logger.channel.purge']
+@@ -55,7 +55,7 @@ services:
+     arguments: ['@plugin.manager.purge.queue', '@purge.logger', '@config.factory', '@purge.queue.txbuffer',  '@purge.queue.stats', '@purge.invalidation.factory', '@purge.purgers']
+     public: true
+     tags:
+-      - { name: needs_destruction }
++      - { name: needs_destruction, priority: -901 }
+   purge.queue.txbuffer:
+     public: true
+     class: Drupal\purge\Plugin\Purge\Queue\TxBuffer
+@@ -64,7 +64,7 @@ services:
+     arguments: ['@state']
+     public: true
+     tags:
+-      - { name: needs_destruction }
++      - { name: needs_destruction, priority: -902 }
+   plugin.manager.purge.queue:
+     class: Drupal\purge\Plugin\Purge\Queue\PluginManager
+     parent: default_plugin_manager
+@@ -113,7 +113,7 @@ services:
+     arguments: ['@state']
+     public: true
+     tags:
+-      - { name: needs_destruction }
++      - { name: needs_destruction, priority: -903 }
+   plugin.manager.purge.purgers:
+     class: Drupal\purge\Plugin\Purge\Purger\PluginManager
+     parent: default_plugin_manager

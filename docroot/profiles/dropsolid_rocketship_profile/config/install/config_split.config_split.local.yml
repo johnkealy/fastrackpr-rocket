@@ -1,0 +1,27 @@
+langcode: en
+status: true
+dependencies: {  }
+id: local
+label: Local
+description: ''
+weight: 0
+stackable: false
+storage: folder
+folder: ../config/splits/local
+module:
+  dblog: 0
+  devel: 0
+  devel_php: 0
+  reroute_email: 0
+  twig_xdebug: 0
+  views_ui: 0
+theme: {  }
+complete_list:
+  - environment_indicator.indicator
+  - environment_indicator.settings
+  - minifyhtml.config
+  - system.logging
+  - system.performance
+partial_list:
+  - symfony_mailer.settings
+  - symfony_mailer.mailer_transport.smtp

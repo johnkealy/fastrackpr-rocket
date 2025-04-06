@@ -1,0 +1,20 @@
+$schema: https://git.drupalcode.org/project/drupal/-/raw/10.1.x/core/modules/sdc/src/metadata.schema.json
+name: video
+status: stable
+group: Layout builder
+props:
+  type: object
+  properties:
+    component:
+      type: string
+    attributes:
+      type: Drupal\Core\Template\Attribute
+    classes:
+      type: array
+    media:
+      type: array
+slots:
+  cb_intro:
+    title: Content block - Intro
+  cb_content:
+    title: Content block - Body

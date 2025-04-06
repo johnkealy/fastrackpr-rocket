@@ -1,0 +1,13 @@
+diff --git a/src/Plugin/SectionStorage/TranslatableOverridesSectionStorage.php b/src/Plugin/SectionStorage/TranslatableOverridesSectionStorage.php
+index 1e5d0f6..11ed6fe 100644
+--- a/src/Plugin/SectionStorage/TranslatableOverridesSectionStorage.php
++++ b/src/Plugin/SectionStorage/TranslatableOverridesSectionStorage.php
+@@ -15,4 +15,8 @@ class TranslatableOverridesSectionStorage extends OverridesSectionStorage {
+     return $result;
+   }
+ 
++  public function isTranslatable() {
++    return FALSE;
++  }
++
+ }

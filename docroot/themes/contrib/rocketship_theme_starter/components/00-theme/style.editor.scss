@@ -1,0 +1,44 @@
+@use "sass:math";
+
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * CKEditor styling
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+// ** If using Google or Adobe/Webkit fonts:
+//    import our fonts for use in Editor only !!!
+//    Use 05-pages/html for setting up font for the front-end theme
+
+//@import url("https://fonts.googleapis.com/css?family=Open+Sans:300,400,700");
+//@import url("https://somewebkiturl.com/mywebkitid.css");
+
+@import "00-base/_libs.scss";
+@import "00-base/00-config/**/*.scss";
+@import "00-base/01-helpers/**/*.scss";
+@import "00-base/02-fonts/**/*.scss"; // the self-hosted fonts, such as Fontawesome
+
+@import "00-base/_css-variables.scss";
+
+// ** Vendors: load individually
+@import "00-base/04-vendors/fontawesome/fontawesome.scss";
+
+@import "00-base/05-grid/**/*.scss";
+
+@import "00-base/0*-colors/*.scss"; // Don't include the styleguide sub-folder
+
+.ck-style-dropdown,
+.ck-editor__main {
+  @import "01-atoms/**/*.scss";
+
+  // Default font declaration
+  font-family: var(--ff-fallback);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  font-weight: var(--fw-normal);
+  text-align: left;
+  text-rendering: optimizespeed;
+  color: hsl(var(--clr-base));
+  background-color: hsl(var(--clr-base-bg));
+  scroll-behavior: smooth;
+}

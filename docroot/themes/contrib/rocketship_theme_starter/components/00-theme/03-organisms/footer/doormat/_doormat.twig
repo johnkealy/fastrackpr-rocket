@@ -1,0 +1,11 @@
+{% if page.doormat %}
+  <aside class="doormat" role="complementary">
+    <div class="container">
+      {% if page.doormat %}
+        {% block doormat %}
+          {{ page.doormat }}
+        {% endblock doormat %}
+      {% endif %}
+    </div>
+  </aside>
+{% endif %}

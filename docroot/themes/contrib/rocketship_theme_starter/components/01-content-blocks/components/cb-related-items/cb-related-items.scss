@@ -1,0 +1,99 @@
+////////////////////////////////////////////////////////////////////////////////
+// *
+// * Content block: related items.
+// *
+////////////////////////////////////////////////////////////////////////////////
+
+@use "sass:math";
+
+@import "../../../00-theme/00-base/00-config/**/*.scss";
+@import "../../../00-theme/00-base/01-helpers/**/*.scss";
+@import "../../../00-theme/00-base/05-grid/_00-grid-flex";
+
+.cb-related-items {
+  --_related-items-gap: var(--gap-md);
+}
+
+.cb__intro--related-items {
+  max-width: var(--max-width-inner);
+}
+
+.field__items--name-field-cb-related-items {
+  gap: var(--_related-items-gap) 0;
+  @include flex-grid(12, var(--_related-items-gap));
+}
+
+.field__item--name-field-cb-related-items {
+  @include flex-col(12, 12, var(--_related-items-gap));
+
+  .node,
+  .node__content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .field--name-field-page-display-canonical:last-child {
+    display: flex;
+    flex-grow: 1;
+    align-items: flex-end;
+  }
+}
+
+.node__content--view-mode-related {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+
+  .heading {
+    margin-bottom: 0;
+  }
+
+  .rs-canonical-link-formatter {
+    // Please don't use a mixin, just set a class on the field.
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: wide phone & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-xs-wide {
+  .field__item--name-field-cb-related-items {
+    width: calc(#{math.div(100%, 12) * 6} - var(--_related-items-gap));
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: tablet & wider
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-sm {
+  .field__item--name-field-cb-related-items {
+    width: calc(#{math.div(100%, 12) * 4} - var(--_related-items-gap));
+
+    .layout--2-col & {
+      width: calc(100% - var(--_related-items-gap));
+    }
+  }
+}
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// * Breakpoint: large screen
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+@include bp-lg {
+  .field__item--name-field-cb-related-items {
+    width: calc(#{math.div(100%, 12) * 3} - var(--_related-items-gap));
+
+    .layout--2-col & {
+      width: calc(#{math.div(100%, 12) * 6} - var(--_related-items-gap));
+    }
+
+    .layout__region--size-1-3 &,
+    .layout__region--size-1-4 & {
+      width: calc(100% - var(--_related-items-gap));
+    }
+  }
+}

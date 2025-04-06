@@ -1,0 +1,15 @@
+/**
+ * Square mixin
+ *
+ * @param [Number] $dimensions = the height and width of the element
+ */
+/* stylelint-disable */
+/* stylelint-enable */
+/* stylelint-disable */
+/* stylelint-enable */
+.cb-focus {
+  text-align: center;
+}
+.cb-focus .field--buttons {
+  justify-content: center;
+}

@@ -1,0 +1,7 @@
+node_keep.settings:
+  path: '/admin/config/content/node-keep'
+  defaults:
+    _title: 'Node keep'
+    _form: 'Drupal\node_keep\Form\SettingsForm'
+  requirements:
+    _permission: 'administer node_keep'

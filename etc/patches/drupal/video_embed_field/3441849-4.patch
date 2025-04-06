@@ -1,0 +1,33 @@
+diff --git a/src/Plugin/Field/FieldFormatter/Colorbox.php b/src/Plugin/Field/FieldFormatter/Colorbox.php
+index 34f545bd84c8566a98e1de44bb6a58bf14115ce2..252eb632a8aca8c5c2ac5d846a1f481f859fdb2c 100644
+--- a/src/Plugin/Field/FieldFormatter/Colorbox.php
++++ b/src/Plugin/Field/FieldFormatter/Colorbox.php
+@@ -119,6 +119,16 @@ class Colorbox extends FormatterBase implements ContainerFactoryPluginInterface
+         $videos[$delta]['#attributes']['class'][] = 'video-embed-field-responsive-modal';
+         $videos[$delta]['#attributes']['style'] = sprintf('width:%dpx;', $this->getSetting('modal_max_width'));
+       }
++
++      $button_element = [
++        '#type' => 'button',
++        '#value' => $this->t('Open video popup'),
++        '#attributes' => [
++          'class' => ['accessibility-button', 'visually-hidden'],
++          'tabindex' => '0',
++        ],
++      ];
++
+       $element[$delta] = [
+         '#type' => 'container',
+         '#attributes' => [
+@@ -136,7 +146,10 @@ class Colorbox extends FormatterBase implements ContainerFactoryPluginInterface
+         '#cache' => [
+           'contexts' => ['user.permissions'],
+         ],
+-        'children' => $thumbnails[$delta],
++        'children' => [
++          $thumbnails[$delta],
++          $button_element,
++        ],
+       ];
+     }
+     $this->colorboxAttachment->attach($element);

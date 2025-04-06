@@ -1,0 +1,20 @@
+<li class="field-cb-menu-overview__item">
+  {% if image['#title'][0] %}
+    <div class="field-cb-menu-overview__item__visual">
+      {{ image }}
+    </div>
+  {% endif %}
+  <div class="field-cb-menu-overview__item__content">
+    {% if title %}
+      <div class="field-cb-menu-overview__item__title">{{ title }}</div>
+    {% endif %}
+    {% if description[0] %}
+      <div class="field-cb-menu-overview__item__description">{{ description }}</div>
+    {% endif %}
+  </div>
+  {% if link %}
+    <div class="field-cb-menu-overview__item__link">
+      {{ link }}
+    </div>
+  {% endif %}
+</li>

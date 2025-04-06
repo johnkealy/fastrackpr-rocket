@@ -1,0 +1,123 @@
+<?php
+
+/**
+ * @file
+ * Contains layout_builder_modal.module.
+ */
+
+use Drupal\Component\Serialization\Json;
+use Drupal\layout_builder_modal\LayoutBuilderModal;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_contextual_links_alter().
+ */
+function layout_builder_modal_contextual_links_alter(array &$links, $group, array $route_parameters) {
+  // Default key.
+  $keys = ['layout_builder_block_update'];
+  $keys[] = 'layout_builder_block';
+  $keys[] = 'layout_builder_block_translate';
+  $keys[] = 'layout_builder_inline_block_translate';
+
+  foreach ($keys as $key) {
+    if (isset($links[$key])) {
+      $config = \Drupal::config('layout_builder_modal.settings');
+
+      $links[$key]['localized_options']['attributes']['data-dialog-type']    = 'dialog';
+      $links[$key]['localized_options']['attributes']['data-dialog-options'] = Json::encode(
+        [
+          'width'      => $config->get('modal_width'),
+          'height'     => $config->get('modal_height'),
+          'target'     => 'layout-builder-modal',
+          'autoResize' => $config->get('modal_autoresize'),
+          'modal'      => TRUE,
+        ]
+      );
+      unset($links[$key]['localized_options']['attributes']['data-dialog-renderer']);
+    }
+  }
+}
+
+/**
+ * Implements hook_element_info_alter().
+ */
+function layout_builder_modal_element_info_alter(array &$types) {
+  if (isset($types['layout_builder'])) {
+    $types['layout_builder']['#pre_render'][] = [
+      LayoutBuilderModal::class,
+      'preRenderContextual',
+    ];
+  }
+}
+
+/**
+ * Implements hook_link_alter().
+ */
+function layout_builder_modal_link_alter(&$variables) {
+  /** @var Drupal\Core\Url $url */
+  $url = $variables['url'];
+
+  if (!$url->isRouted()) {
+    return;
+  }
+
+  $route_name = $url->getRouteName();
+
+  $route_names = [
+    'layout_builder.add_block',
+    'layout_builder.update_block',
+    'layout_builder.translate_inline_block',
+    'layout_builder.translate_block',
+  ];
+  if (!in_array($route_name, $route_names, TRUE)) {
+    return;
+  }
+
+  if (!isset($variables['options']['attributes']['class'])) {
+    return;
+  }
+
+  if (!in_array('use-ajax', $variables['options']['attributes']['class'], TRUE)) {
+    return;
+  }
+
+  $config = \Drupal::config('layout_builder_modal.settings');
+
+  $data_dialog_options = Json::encode([
+    'width' => $config->get('modal_width'),
+    'height' => $config->get('modal_height'),
+    'target' => 'layout-builder-modal',
+    'autoResize' => $config->get('modal_autoresize'),
+    'modal' => TRUE,
+  ]);
+
+  $variables['options']['attributes']['data-dialog-options'] = $data_dialog_options;
+  $variables['options']['attributes']['data-dialog-type'] = 'dialog';
+  unset($variables['options']['attributes']['data-dialog-renderer']);
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function layout_builder_modal_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $applicable_forms_regex = [
+    '/^layout_builder_add_block$/',
+    '/^layout_builder_update_block$/',
+    '/layout_builder_translate_form$/',
+  ];
+
+  $applicable = FALSE;
+  foreach($applicable_forms_regex as $regex) {
+    if (preg_match($regex, $form_id)) {
+      $applicable = TRUE;
+      break;
+    }
+  }
+
+  if ($applicable) {
+    $config = \Drupal::config('layout_builder_modal.settings');
+    if ($config->get('theme_display') == 'seven') {
+      $form['#attached']['library'][] = 'layout_builder_modal/seven';
+    }
+  }
+}

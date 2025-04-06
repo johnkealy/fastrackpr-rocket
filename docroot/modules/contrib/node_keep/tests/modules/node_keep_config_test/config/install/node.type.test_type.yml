@@ -1,0 +1,12 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - node_keep
+third_party_settings:
+  node_keep:
+    node_keeper: false
+    alias_keeper: false
+name: 'Test Type'
+type: test_type
+description: "A test node type to verify the node_keep schema definition."

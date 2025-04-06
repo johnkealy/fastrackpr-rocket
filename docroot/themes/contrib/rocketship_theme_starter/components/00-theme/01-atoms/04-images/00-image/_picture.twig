@@ -1,0 +1,42 @@
+{% set picture_bem_block = picture_bem_block ?? false %}
+{% set picture_bem_element = picture_bem_element|default('picture') %}
+{% set picture_bem_modifiers = picture_bem_modifiers|default([]) %}
+
+{% set picture_bem_extra = [] %}
+
+{% set aspect = aspect|default(attributes.aspect) %}
+{% set extra_style = extra_style|default('') %}
+
+{# if lazy loading, need helper classes #}
+{# remove lazy loading attr from picture element, only need it on the img for now #}
+{% if attributes.loading %}
+  {% set attributes = attributes.removeAttribute('loading') %}
+{% endif %}
+
+{% if aspect %}
+  {% set inline_style = inline_style ~ "padding-bottom: " ~ aspect ~ ";" %}
+
+  {% if attributes.aspect %}
+    {% set attributes = attributes.removeAttribute('aspect') %}
+  {% endif %}
+{% endif %}
+
+<picture
+  {{ bem(picture_bem_block, picture_bem_element, picture_bem_modifiers, picture_bem_extra) }}
+  {% if inline_style %} style="{{ inline_style }}"{% endif %}
+>
+  {% if sources %}
+    {% for source_attributes in sources %}
+      {# 'source_attributes' function doesn't work as-is in Storybook styleguide,
+         so using straightup image instead for the styleguide #}
+      <source{{ source_attributes }}/>
+    {% endfor %}
+  {% endif %}
+  {# The controlling image, with the fallback image in srcset. #}
+  {% include "@rocketship-theme-starter-atoms/04-images/00-image/_image.twig" with {
+    image_bem_block: picture_image_bem_block|default(picture_bem_block),
+    is_picture: true,
+  } %}
+</picture>
+
+
